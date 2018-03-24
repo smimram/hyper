@@ -40,18 +40,29 @@ end
 module Signature = struct
   type label = string
 
+  (** A signature. *)
+  type t = (label,label) Graph.t
+
+  (* include (Graph : module type of Graph with type t := t) *)
+
   type vertex = label Vertex.t
 
   type edge = (label,label) Edge.t
 
-  (** A signature. *)
-  type t = (label,label) Graph.t
+  let add_vertex (s:t) (v:vertex) : t = Graph.add_vertex s v
+
+  let add_edge (s:t) l (src:vertex list) (tgt:vertex list) : t = Graph.add_edge s l src tgt
 end
 
 module Term = struct
   (** A term on a signature. *)
-  type 's t = { graph : (Signature.vertex, Signature.edge) Graph.t; source : Signature.vertex list; target : Signature.vertex list }
+  type 's t =
+    {
+      graph : (Signature.vertex, Signature.edge) Graph.t;
+      source : Signature.vertex list;
+      target : Signature.vertex list
+    }
 
-  (** Find an instance of the second graph in the first one. *)
+  (** Find an instance of the second term in the first one. *)
   let matchings t t' = ()
 end
