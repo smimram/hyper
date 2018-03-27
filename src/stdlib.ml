@@ -1,3 +1,6 @@
+(** Enhanced standard library. *)
+
+(** Enumerations. *)
 module Enum = struct
   type 'a t = unit -> 'a
 
@@ -16,7 +19,7 @@ module Enum = struct
     fun () -> f (get e)
 end
 
-(** Equivalence relation (with structural equality). *)
+(** Equivalence relation (with physical equality). *)
 module Equiv = struct
   (* TODO: abstract with a functor *)
   let eq x y = x == y
@@ -52,6 +55,30 @@ module Equiv = struct
     let x = repr e x in
     let y = repr e y in
     List.map (fun (z,z') -> z, if eq z' x then y else z') e
+end
+
+(** Functions (with physical equality). *)
+module Fun = struct
+  let eq x y = x == y
+
+  (** A function. *)
+  type 'a t = ('a * 'a) list
+
+  (** Nowhere defined function. *)
+  let empty = []
+
+  (** Test whether an element is in the domain. *)
+  let has (f:'a t) x =
+    List.exists (fun (x',_) -> eq x x') f
+
+  (** Image of an element. *)
+  let get (f:'a t) x =
+    List.assq x f
+
+  (** Add a binding to a function. *)
+  let add f x y : 'a t =
+    assert (not (has f x));
+    (x,y)::f
 end
 
 module List = struct
