@@ -16,8 +16,7 @@ let () =
   let i = T.id [a] in
   let i2 = T.id [a;a] in
   let m = T.generator m in
-  let f = T.comp (T.tens m i) m in
-  let g = T.comp (T.tens m i2) f in
+  (*
   let to_string f =
     let uid = UID.Named.create () in
     let vertex v =
@@ -27,4 +26,7 @@ let () =
     in
     T.to_string ~vertex f
   in
-  Printf.printf "%s\n%!" (to_string f)
+   *)
+  let f = T.comp (T.tens m i) m in
+  let g = T.comp (T.tens m i2) f in
+  Printf.printf "%s\n%!" (T.to_string g)

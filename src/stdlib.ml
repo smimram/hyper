@@ -58,31 +58,36 @@ module Equiv = struct
   let empty : 'a t = Fun.empty
 
   (** Canonical representative. *)
-  let repr (e : 'a t) x = Fun.app e x
+  let repr (r : 'a t) x = Fun.app r x
 
   (** Representative for a partially defined equivalence relation. *)
-  let prepr e x =
-    try repr e x with Not_found -> x
+  let prepr r x =
+    try repr r x with Not_found -> x
 
   (** Test for equivalence. *)
-  let equiv e x y = eq (repr e x) (repr e y)
+  let equiv r x y = eq (repr r x) (repr r y)
 
   (** Part of the domain. *)
-  let has e x =
-    try ignore (repr e x); true with Not_found -> false
+  let has r x =
+    Fun.has r x
 
   (** Add to the domain. *)
-  let add e x : 'a t =
-    assert (not (has e x));
-    Fun.add e x x
+  let add r x : 'a t =
+    assert (not (has r x));
+    Fun.add r x x
 
   (** Merge two elements. *)
-  let merge e x y =
-    assert (has e x);
-    assert (has e y);
-    let x = repr e x in
-    let y = repr e y in
-    List.map (fun (z,z') -> z, if eq z' x then y else z') e
+  let merge r x y =
+    assert (has r x);
+    assert (has r y);
+    let x = repr r x in
+    let y = repr r y in
+    if x == y then r else
+      List.map (fun (z,z') -> z, if eq z' x then y else z') r
+
+  (** Map a function to elements. *)
+  let map f (r : 'a t) : 'b t =
+    List.map (fun (x,y) -> f x, f y) r
 end
 
 (** Lists with physical equality. *)

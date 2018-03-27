@@ -19,6 +19,18 @@ module Vertex = struct
 
   (** Fresh copy of a vertex. *)
   let copy v = make (label v)
+
+  let name v : string = label (label v)
+
+  let to_string =
+    let uid = UID.Named.create () in
+    fun v ->
+    let s = label (label v) in
+    let n = UID.Named.get uid s v in
+    s^"@"^string_of_int n
+
+  let list_to_string vv =
+    String.concat "," (List.map to_string vv)
 end
 
 (** Labeled edges. *)
@@ -40,6 +52,8 @@ module Edge = struct
 
   (** Equality. *)
   let eq e e' = e == e'
+
+  let to_string e = label (label e)
 
   (** Map a function on vertices. *)
   let map f e =
@@ -65,6 +79,17 @@ module Graph = struct
   let edges g = g.edges
 
   let make vertices edges = { vertices; edges }
+
+  let to_string g =
+    let edges =
+      List.map
+        (fun e ->
+          Edge.to_string e ^ " : " ^ Vertex.list_to_string (Edge.source e) ^ " -> " ^ Vertex.list_to_string (Edge.target e)
+        ) (edges g)
+    in
+    (* TODO: isolated vertices *)
+    String.concat "\n" edges
+
 
   (** Empty graph. *)
   let empty = make [] []
@@ -119,6 +144,8 @@ module Graph = struct
         vertices = List.fold_left (fun f x -> Fun.add f x x) Fun.empty (vertices g);
         edges = List.fold_left (fun f e -> Fun.add f e e) Fun.empty (edges g)
       }
+
+    let hasv g v = Fun.has g.vertices v
 
     let appv g v = Fun.app g.vertices v
 
@@ -198,16 +225,19 @@ module Graph = struct
 
   (** Disjoint union. *)
   let coprod g1 g2 =
-    let g1 = copy g1 in
-    let g2 = copy g2 in
+    let i1 = copy g1 in
+    let i2 = copy g2 in
+    (* let i1,i2 = if disjoint g1 g2 then Map.id g1, Map.id g2 else copy g1, copy g2 in *)
+    let g1 = Map.target i1 in
+    let g2 = Map.target i2 in
     let g =
       {
-        vertices = (vertices (Map.target g1))@(vertices (Map.target g2));
-        edges = (edges (Map.target g1))@(edges (Map.target g2))
+        vertices = (vertices g1)@(vertices g2);
+        edges = (edges g1)@(edges g2)
       }
     in
-    let i1 = { g1 with target = g } in
-    let i2 = { g2 with target = g } in
+    let i1 = { i1 with target = g } in
+    let i2 = { i2 with target = g } in
     i1, i2
 end
 
@@ -240,6 +270,21 @@ end
                  
 (** Terms. *)
 module Term = struct
+(*
+  module Vertex = struct
+    type t = Signature.vertex Vertex.t
+
+    let label = Vertex.label
+
+    let name v = label (label v)
+
+    let to_string v =
+      let s = name v in
+      let n = UID.Named.get uid s v in
+      s^"@"^string_of_int n
+  end
+ *)
+
   (** A term on a signature. *)
   type t =
     {
@@ -253,6 +298,16 @@ module Term = struct
   let target f = f.target
 
   let graph f = f.graph
+
+  (** String representation. *)
+  let to_string f =
+    let vertex v = Vertex.to_string v in
+    let edge e = Edge.to_string e in
+    let vertices vv = Vertex.list_to_string vv in
+    let src = vertices (source f) in
+    let tgt = vertices (target f) in
+    (* TODO: display isolated vertices *)
+    src ^ " ---> " ^ tgt ^ "\n" ^ Graph.to_string (graph f)
 
   let make graph source target = { graph; source; target }
 
@@ -293,18 +348,22 @@ module Term = struct
 
   (** Copose two terms. *)
   let comp f g =
+    (* Printf.printf "COMPOSE\n%s\nWITH\n%s\n%!" (to_string f) (to_string g); *)
     assert (List.length (target f) = List.length (source g));
-    assert (List.for_all2 (fun v v' -> Vertex.label v = Vertex.label v') (target f) (source g));
+    assert (List.for_all2 (fun v v' -> Vertex.label (Vertex.label v) = Vertex.label (Vertex.label v')) (target f) (source g));
     let r =
       let fr r v v' =
         let r = if Equiv.has r v then r else Equiv.add r v in
         let r = if Equiv.has r v' then r else Equiv.add r v' in
+        (* Printf.printf "merge %s with %s\n\n%!" (Vertex.to_string v) (Vertex.to_string v'); *)
         Equiv.merge r v v'
       in
       List.fold_left2 fr Equiv.empty (target f) (source g)
     in
-    let repr = Equiv.prepr r in
     let i1,i2 = Graph.coprod (graph f) (graph g) in
+    (* Printf.printf "COPROD\n%s\n\n%!" (Graph.to_string (Graph.Map.target i1)); *)
+    let r = Equiv.map (fun x -> if Graph.Map.hasv i1 x then Graph.Map.appv i1 x else Graph.Map.appv i2 x) r in
+    let repr = Equiv.prepr r in
     let i = Graph.quotient (Graph.Map.target i1) repr in
     let i1 = Graph.Map.comp i1 i in
     let i2 = Graph.Map.comp i2 i in
@@ -333,21 +392,4 @@ module Term = struct
     (* let rec aux vv ee = *)
       (* if vv = [] && ee = [] then  *)
     (* in *)
-
-  (** String representation. *)
-  let to_string ?vertex ?edge f =
-    let vertex = Option.default (fun v -> Vertex.label (Vertex.label v)) vertex in
-    let edge = Option.default (fun e -> Edge.label (Edge.label e)) edge in
-    let vertices vv = String.concat "," (List.map vertex vv) in
-    let src = vertices (source f) in
-    let tgt = vertices (target f) in
-    let edges =
-      List.map
-        (fun e ->
-          edge e ^ " : " ^ vertices (Edge.source e) ^ " -> " ^ vertices (Edge.target e)
-        ) (Graph.edges (graph f))
-    in
-    let edges = String.concat "\n" edges in
-    (* TODO: display isolated vertices *)
-    src ^ " ---> " ^ tgt ^ "\n" ^ edges
 end
