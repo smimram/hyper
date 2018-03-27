@@ -6,6 +6,10 @@ module Enum = struct
 
   exception End
 
+  let empty = fun () -> raise End
+
+  let make f = f
+
   let get e = e ()
 
   let append e1 e2 =

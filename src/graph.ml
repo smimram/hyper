@@ -133,8 +133,8 @@ module Graph = struct
 
     let target f = f.target
 
-    (* (\** Empty map. *\) *)
-    (* let empty source target = { source; target; vertices = []; edges = [] } *)
+    (** Empty map. *)
+    let empty source target = { source; target; vertices = []; edges = [] }
 
     (** Identity map. *)
     let id g =
@@ -145,14 +145,19 @@ module Graph = struct
         edges = List.fold_left (fun f e -> Fun.add f e e) Fun.empty (edges g)
       }
 
+    (** Whether the map is defined on a given vertex. *)
     let hasv g v = Fun.has g.vertices v
 
+    (** Image of a vertex. *)
     let appv g v = Fun.app g.vertices v
 
+    (** Image of an edge. *)
     let appe g e = Fun.app g.edges e
 
+    (** Add image for a vertex. *)
     let addv g v v' = { g with vertices = Fun.add g.vertices v v' }
 
+    (** Add image for edge. *)
     let adde g e e' = { g with edges = Fun.add g.edges e e' }
 
     (** Pick an undefined vertex. *)
@@ -387,9 +392,10 @@ module Term = struct
       target = (List.map f1 (target g1))@(List.map f2 (target g2))
     }
 
-  (** Find an instance of the second term in the first one. *)
-  (* let matchings t t' = *)
-    (* let rec aux vv ee = *)
-      (* if vv = [] && ee = [] then  *)
-    (* in *)
+  (** Find an instance of the first term in the second one. *)
+  let matchings t t' =
+    let rec aux i =
+      assert false
+    in
+    aux (Graph.Map.empty t t')
 end

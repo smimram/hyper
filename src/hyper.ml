@@ -27,6 +27,7 @@ let () =
     T.to_string ~vertex f
   in
    *)
+  let assl = T.comp (T.tens m i) m in
   let f = T.comp (T.tens m i) m in
   let g = T.comp (T.tens m i2) f in
   Printf.printf "%s\n%!" (T.to_string g)
