@@ -4,7 +4,7 @@ ANNOTATE = true
 DOC_FILES = $(SOURCES)
 
 all: dnc
-	./hyper
+	OCAMLRUNPARAM=b ./hyper
 
 ci:
 	git ci . -m "Hypergraph rewriting."

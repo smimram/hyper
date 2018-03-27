@@ -1,6 +1,7 @@
 (** Hypergraphs. *)
 
 open Stdlib
+module List = Listq
 
 (** Labeled vertices. *)
 module Vertex = struct
@@ -77,17 +78,17 @@ module Graph = struct
 
   let map (fv,fe) g =
     {
-      vertices = List.uniq (List.map fv g.vertices);
-      edges = List.uniq (List.map fe g.edges)
+      vertices = List.unique (List.map fv g.vertices);
+      edges = List.unique (List.map fe g.edges)
     }
 
   let vertex_pred g v =
-    assert (List.memq v (vertices g));
-    List.filter (fun e -> List.memq v (Edge.target e)) (edges g)
+    assert (List.mem v (vertices g));
+    List.filter (fun e -> List.mem v (Edge.target e)) (edges g)
 
   let vertex_succ g v =
-    assert (List.memq v (vertices g));
-    List.filter (fun e -> List.memq v (Edge.source e)) (edges g)
+    assert (List.mem v (vertices g));
+    List.filter (fun e -> List.mem v (Edge.source e)) (edges g)
 
   let edge_pred g e = Edge.source e
 
@@ -130,7 +131,7 @@ module Graph = struct
     (** Pick an undefined vertex. *)
     let pickv f =
       let rec aux = function
-        | (v,_)::l -> if List.memq v (vertices f.source) then v else aux l
+        | (v,_)::l -> if List.mem v (vertices f.source) then v else aux l
         | [] -> raise Not_found
       in
       aux f.vertices
@@ -193,7 +194,7 @@ module Graph = struct
 
   (** Test whether two graphs are disjoint. *)
   let disjoint g1 g2 =
-    List.interq (vertices g1) (vertices g2) = [] && List.interq (edges g1) (edges g2) = []
+    List.inter (vertices g1) (vertices g2) = [] && List.inter (edges g1) (edges g2) = []
 
   (** Disjoint union. *)
   let coprod g1 g2 =
@@ -255,6 +256,7 @@ module Term = struct
 
   let make graph source target = { graph; source; target }
 
+  (*
   (** Morphisms between terms. *)
   module Map = struct
     type t =
@@ -270,10 +272,11 @@ module Term = struct
     let target f =
       make (Graph.Map.target f.graph) f.source f.target
   end
+  *)
 
   (** Identity. *)
   let id u =
-    assert (u = List.uniq u);
+    let u = List.map Vertex.make u in
     {
       graph = Graph.discrete u;
       source = u;
@@ -300,7 +303,7 @@ module Term = struct
       in
       List.fold_left2 fr Equiv.empty (target f) (source g)
     in
-    let repr = Equiv.repr r in
+    let repr = Equiv.prepr r in
     let i1,i2 = Graph.coprod (graph f) (graph g) in
     let i = Graph.quotient (Graph.Map.target i1) repr in
     let i1 = Graph.Map.comp i1 i in

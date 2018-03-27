@@ -85,18 +85,25 @@ module Equiv = struct
     List.map (fun (z,z') -> z, if eq z' x then y else z') e
 end
 
-module List = struct
-  include List
-
-  (** Remove duplicates (wrt physical equality). *)
-  let rec uniq = function
-    | x::l when memq x l -> uniq l
-    | x::l -> x::(uniq l)
-    | [] -> []
+(** Lists with physical equality. *)
+module Listq = struct
+  let map = List.map
+  let filter = List.filter
+  let fold_left = List.fold_left
+  let fold_left2 = List.fold_left2
+  let length = List.length
+  let for_all2 = List.for_all2
+  let mem = List.memq
 
   (** Intersection (wrt physical equality). *)
-  let interq l1 l2 =
-    List.filter (fun x -> List.memq x l2) l1
+  let inter l1 l2 =
+    List.filter (fun x -> List.mem x l2) l1
+
+  (** Remove duplicates (wrt physical equality). *)
+  let rec unique = function
+    | x::l when mem x l -> unique l
+    | x::l -> x::(unique l)
+    | [] -> []
 end
 
 (* module Namer = struct *)
