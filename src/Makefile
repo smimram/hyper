@@ -1,4 +1,4 @@
-SOURCES = graph.ml hyper.ml
+SOURCES = stdlib.ml graph.ml hyper.ml
 RESULT = hyper
 ANNOTATE = true
 
@@ -7,5 +7,6 @@ all: dnc
 
 ci:
 	git ci . -m "Hypergraph rewriting."
+	git push
 
 include OCamlMakefile
