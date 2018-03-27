@@ -117,6 +117,8 @@ module Listq = struct
   let hd = List.hd
   let tl = List.tl
   let map = List.map
+  let map2 = List.map2
+  let iter = List.iter
   let filter = List.filter
   let fold_left = List.fold_left
   let fold_left2 = List.fold_left2
@@ -137,6 +139,14 @@ module Listq = struct
     | x::l when mem x l -> unique l
     | x::l -> x::(unique l)
     | [] -> []
+
+  let iter_pairs f l1 l2 =
+    iter (fun x -> iter (fun y -> f x y) l2) l1
+
+  let pairs l1 l2 =
+    let ans = ref [] in
+    iter_pairs (fun x y -> ans := (x,y) :: !ans) l1 l2;
+    !ans
 end
 
 module Option = struct

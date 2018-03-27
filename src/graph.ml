@@ -107,16 +107,20 @@ module Graph = struct
       edges = List.unique (List.map fe g.edges)
     }
 
+  (** Predecessors of a vertex. *)
   let vertex_pred g v =
     assert (List.mem v (vertices g));
     List.filter (fun e -> List.mem v (Edge.target e)) (edges g)
 
+  (** Successors of a vertex. *)
   let vertex_succ g v =
     assert (List.mem v (vertices g));
     List.filter (fun e -> List.mem v (Edge.source e)) (edges g)
 
+  (** Predecessors of an edge. *)
   let edge_pred g e = Edge.source e
 
+  (** Successors of an edge. *)
   let edge_succ g e = Edge.target e
 
   (** Partial maps between graphs. *)
@@ -150,6 +154,9 @@ module Graph = struct
 
     (** Whether the map is defined on a given vertex. *)
     let hasv f x = Fun.has f.vertices x
+
+    (** Whether the map is defined on a given edge. *)
+    let hase f e = Fun.has f.edges e
 
     (** Image of a vertex. *)
     let appv f x = Fun.app f.vertices x
@@ -379,7 +386,7 @@ module Term = struct
   let comp f g =
     (* Printf.printf "COMPOSE\n%s\nWITH\n%s\n%!" (to_string f) (to_string g); *)
     assert (List.length (target f) = List.length (source g));
-    assert (List.for_all2 (fun v v' -> Vertex.label (Vertex.label v) = Vertex.label (Vertex.label v')) (target f) (source g));
+    assert (List.for_all2 (fun v v' -> Vertex.label v == Vertex.label v') (target f) (source g));
     let r =
       let fr r v v' =
         let r = if Equiv.has r v then r else Equiv.add r v in
@@ -417,13 +424,64 @@ module Term = struct
     }
 
   (** Find an instance of the first term in the second one. *)
-  (* let matchings t t' = *)
-    (* let ans = ref [] in *)
-    (* let queue = Queue.create () in *)
-    (* while not (Queue.is_empty queue) do *)
-      (* let i = Queue.pop in *)
-      (* if Graph.Map.totalv i then ans := i :: !ans else *)
-        (* let v = Graph.Map.pickv  *)
-    (* done *)
-    (* Enum.make (aux (Graph.Map.empty (graph t) (graph t'))) *)
+  let matchings t t' =
+    let g = graph t in
+    let g' = graph t' in
+    let ans = ref [] in
+    let queue = Queue.create () in
+    Queue.push ([], Graph.Map.empty g g') queue;
+    while not (Queue.is_empty queue) do
+      try
+        let l,i = Queue.pop queue in
+        match l with
+        | [] ->
+           if not (Graph.Map.totalv i) then
+             let x = Graph.Map.pickv i in
+             List.iter (fun x' -> Queue.push ([`V(x,x')],i) queue) (Graph.vertices g)
+           else if not (Graph.Map.totale i) then
+             let e = Graph.Map.picke i in
+             List.iter (fun e' -> Queue.push ([`E(e,e')],i) queue) (Graph.edges g')
+           else
+             ans := i :: !ans
+        | `V(x,x')::l ->
+           if Vertex.label x != Vertex.label x' then raise Exit;
+           if Graph.Map.hasv i x then
+             if Graph.Map.appv i x != x' then raise Exit else Queue.push (l,i) queue
+           else
+             let i = Graph.Map.addv i x x' in
+             (* Map every element of the first list to an element of the second one. *)
+             let rec mappings l1 l2 =
+               match l1 with
+               | [] -> [[]]
+               | x1::l1 ->
+                  let m = mappings l1 l2 in
+                  let ans = ref [] in
+                  List.iter
+                    (fun x2 ->
+                      let m = List.map (fun l -> (x1,x2)::l) m in
+                      ans := m @ !ans
+                    ) l2;
+                  !ans
+             in
+             let p = mappings (Graph.vertex_pred g x) (Graph.vertex_pred g x') in
+             let s = mappings (Graph.vertex_succ g x) (Graph.vertex_succ g' x') in
+             let p = List.map (List.map (fun (e,e') -> `E(e,e'))) p in
+             let s = List.map (List.map (fun (e,e') -> `E(e,e'))) s in
+             List.iter_pairs
+               (fun p s ->
+                 Queue.push (p@s@l,i) queue
+               ) p s
+        | `E(e,e')::l ->
+           if Edge.label e != Edge.label e' then raise Exit;
+           if Graph.Map.hase i e then
+             if Graph.Map.appe i e != e' then raise Exit else Queue.push (l,i) queue
+           else
+             let i = Graph.Map.adde i e e' in
+             let p = List.map2 (fun x x' -> `V(x,x')) (Edge.source e) (Edge.source e') in
+             let s = List.map2 (fun y y' -> `V(y,y')) (Edge.target e) (Edge.target e') in
+             Queue.push (p@s@l,i) queue
+      with
+      | Exit -> ()
+    done;
+    !ans
 end
