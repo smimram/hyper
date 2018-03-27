@@ -94,6 +94,7 @@ module Listq = struct
   let length = List.length
   let for_all2 = List.for_all2
   let mem = List.memq
+  let assoc = List.assq
 
   (** Intersection (wrt physical equality). *)
   let inter l1 l2 =
@@ -106,6 +107,8 @@ module Listq = struct
     | [] -> []
 end
 
-(* module Namer = struct *)
-  (* type t =  *)
-(* end *)
+module Option = struct
+  let default x = function
+    | Some x -> x
+    | None -> x
+end

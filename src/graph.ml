@@ -333,4 +333,21 @@ module Term = struct
     (* let rec aux vv ee = *)
       (* if vv = [] && ee = [] then  *)
     (* in *)
+
+  (** String representation. *)
+  let to_string ?vertex ?edge f =
+    let vertex = Option.default (fun v -> Vertex.label (Vertex.label v)) vertex in
+    let edge = Option.default (fun e -> Edge.label (Edge.label e)) edge in
+    let vertices vv = String.concat "," (List.map vertex vv) in
+    let src = vertices (source f) in
+    let tgt = vertices (target f) in
+    let edges =
+      List.map
+        (fun e ->
+          edge e ^ " : " ^ vertices (Edge.source e) ^ " -> " ^ vertices (Edge.target e)
+        ) (Graph.edges (graph f))
+    in
+    let edges = String.concat "\n" edges in
+    (* TODO: display isolated vertices *)
+    src ^ " ---> " ^ tgt ^ "\n" ^ edges
 end
