@@ -125,6 +125,15 @@ module Graph = struct
         | [] -> raise Not_found
       in
       aux f.vertices
+
+    (** Sequential composition. *)
+    let comp f g =
+      {
+        source = source f;
+        target = target g;
+        vertices = Fun.comp f.vertices g.vertices;
+        edges = Fun.comp f.edges g.edges
+      }
   end
 
   (** Replace vertices (and edges) with fresh ones. *)
@@ -220,7 +229,7 @@ end
 (** Terms. *)
 module Term = struct
   (** A term on a signature. *)
-  type 's t =
+  type t =
     {
       graph : (Signature.vertex, Signature.edge) Graph.t;
       source : (Signature.vertex Vertex.t) list;
@@ -233,12 +242,23 @@ module Term = struct
 
   let graph f = f.graph
 
-  (* let map_vertices s f = *)
-    (* { *)
-      (* graph = Graph.map_vertices s (graph f); *)
-      (* source = List.map s (source f); *)
-      (* target = List.map s (target f); *)
-    (* } *)
+  let make graph source target = { graph; source; target }
+
+  (** Morphisms between terms. *)
+  module Map = struct
+    type t =
+      {
+        graph : (Signature.vertex, Signature.edge) Graph.Map.t;
+        source : (Signature.vertex Vertex.t) list;
+        target : (Signature.vertex Vertex.t) list
+      }
+
+    let source f =
+      make (Graph.Map.source f.graph) f.source f.target
+
+    let target f =
+      make (Graph.Map.target f.graph) f.source f.target
+  end
 
   (** Copose two terms. *)
   let comp f g =
@@ -253,13 +273,14 @@ module Term = struct
       List.fold_left2 fr Equiv.empty (target f) (source g)
     in
     let repr = Equiv.repr r in
-    (* let graph = Graph.map_vertices repr (Graph.coprod (graph f) (graph g)) in *)
-    (* { *)
-      (* graph; *)
-      (* source = List.map repr (source f); *)
-      (* target = List.map repr (target g) *)
-    (* } *)
-    ()
+    let i1,i2 = Graph.coprod (graph f) (graph g) in
+    let i = Graph.quotient (Graph.Map.target i1) repr in
+    (* TODO: morphism *)
+    {
+      graph = Graph.Map.target i;
+      source = List.map repr (source f);
+      target = List.map repr (target g)
+    }
 
   (** Tensor product. *)
   (* let tens g1 g2 = *)

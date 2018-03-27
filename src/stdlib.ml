@@ -41,6 +41,10 @@ module Fun = struct
   let add f x y : 'a t =
     assert (not (has f x));
     (x,y)::f
+
+  (** Sequential composition of functions. *)
+  let comp (f:'a t) g : 'a t =
+    List.map (fun (x,y) -> x, get g y) f
 end
 
 (** Equivalence relation (wrt physical equality). *)
