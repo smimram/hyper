@@ -7,8 +7,10 @@ module Vertex = struct
   (** A vertex. *)
   type 'v t = { label : 'v }
 
+  (** Label. *)
   let label v = v.label
 
+  (** Equality *)
   let eq v v' = v == v'
 
   let make label = { label }
@@ -23,15 +25,20 @@ module Edge = struct
 
   let make l s t = { label = l; source = s; target = t }
 
+  (** Label. *)
   let label e = e.label
 
+  (** Source. *)
   let source e = e.source
 
+  (** Target. *)
   let target e = e.target
 
+  (** Equality. *)
   let eq e e' = e == e'
 
-  let map_vertices f e =
+  (** Map a function on vertices. *)
+  let map f e =
     {
       label = e.label;
       source = List.map f e.source;
@@ -61,8 +68,8 @@ module Graph = struct
 
   let map (fv,fe) g =
     {
-      vertices = List.map fv g.vertices;
-      edges = List.map fe g.edges
+      vertices = List.uniq (List.map fv g.vertices);
+      edges = List.uniq (List.map fe g.edges)
     }
 
   let vertex_pred g v =
@@ -87,8 +94,21 @@ module Graph = struct
         edges : ('v,'e) Edge.t Fun.t
       }
 
-    (** Empty map. *)
-    let empty source target = { source; target; vertices = []; edges = [] }
+    let source f = f.source
+
+    let target f = f.target
+
+    (* (\** Empty map. *\) *)
+    (* let empty source target = { source; target; vertices = []; edges = [] } *)
+
+    (** Identity map. *)
+    let id g =
+      {
+        source = g;
+        target = g;
+        vertices = List.fold_left (fun f x -> Fun.add f x x) Fun.empty (vertices g);
+        edges = List.fold_left (fun f e -> Fun.add f e e) Fun.empty (edges g)
+      }
 
     let get_vertex g v = Fun.get g.vertices v
 
@@ -125,7 +145,7 @@ module Graph = struct
         Fun.get !fe e
       with
       | Not_found ->
-         let e' = Edge.map_vertices funv e in
+         let e' = Edge.map funv e in
          fe := Fun.add !fe e e';
          e'
     in
@@ -137,18 +157,39 @@ module Graph = struct
       edges = !fe
     }
 
+  (** Quotient of a graph. *)
+  let quotient g s =
+    let fv = List.fold_left (fun f x -> Fun.add f x (s x)) Fun.empty (vertices g) in
+    let fe = List.fold_left (fun f e -> Fun.add f e (Edge.map (Fun.get fv) e)) Fun.empty (edges g) in
+    let g' =
+      let fv = Fun.get fv in
+      let fe = Fun.get fe in
+      map (fv,fe) g
+    in
+    { Map.
+      source = g;
+      target = g';
+      vertices = fv;
+      edges = fe
+    }
+
   (** Test whether two graphs are disjoint. *)
   let disjoint g1 g2 =
     List.interq (vertices g1) (vertices g2) = [] && List.interq (edges g1) (edges g2) = []
 
   (** Disjoint union. *)
-  (* let coprod g1 g2 = *)
-    (* (\* assert (disjoint g1 g2); *\) *)
-    (* let g2 = copy g2 in *)
-    (* { *)
-      (* vertices = g1.vertices@g2.vertices; *)
-      (* edges = g1.edges@g2.edges *)
-    (* } *)
+  let coprod g1 g2 =
+    let g1 = copy g1 in
+    let g2 = copy g2 in
+    let g =
+      {
+        vertices = (vertices (Map.target g1))@(vertices (Map.target g2));
+        edges = (edges (Map.target g1))@(edges (Map.target g2))
+      }
+    in
+    let i1 = { g1 with target = g } in
+    let i2 = { g2 with target = g } in
+    i1, i2
 end
 
 (** Signatures. *)
