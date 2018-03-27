@@ -1,14 +1,29 @@
 (** Enhanced standard library. *)
 
+let is_found f x =
+  try ignore (f x); true with Not_found -> false
+
 (** Enumerations. *)
 module Enum = struct
+  (** An enumeration. *)
   type 'a t = unit -> 'a
 
+  (** End of the enumeration. *)
   exception End
 
-  let empty = fun () -> raise End
-
   let make f = f
+
+  (** Empty enumeration. *)
+  let empty = make (fun () -> raise End)
+
+  let of_list l =
+    let l = ref l in
+    let f () =
+      match !l with
+      | x::l' -> l := l'; x
+      | [] -> raise End
+    in
+    make f
 
   let get e = e ()
 
@@ -32,6 +47,9 @@ module Fun = struct
 
   (** Nowhere defined function. *)
   let empty : 'a t = []
+
+  (** Domain. *)
+  let dom (f : 'a t) = List.map fst f
 
   (** Test whether an element is in the domain. *)
   let has (f:'a t) x =
@@ -96,6 +114,8 @@ end
 
 (** Lists with physical equality. *)
 module Listq = struct
+  let hd = List.hd
+  let tl = List.tl
   let map = List.map
   let filter = List.filter
   let fold_left = List.fold_left
@@ -104,6 +124,9 @@ module Listq = struct
   let for_all2 = List.for_all2
   let mem = List.memq
   let assoc = List.assq
+
+  let sub l1 l2 =
+    List.filter (fun x -> not (mem x l2)) l1
 
   (** Intersection (wrt physical equality). *)
   let inter l1 l2 =

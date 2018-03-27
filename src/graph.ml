@@ -121,6 +121,7 @@ module Graph = struct
 
   (** Partial maps between graphs. *)
   module Map = struct
+    (** A map. *)
     type ('v,'e) t =
       {
         source : ('v,'e) graph;
@@ -129,8 +130,10 @@ module Graph = struct
         edges : ('v,'e) Edge.t Fun.t
       }
 
+    (** Source. *)
     let source f = f.source
 
+    (** Target. *)
     let target f = f.target
 
     (** Empty map. *)
@@ -146,27 +149,48 @@ module Graph = struct
       }
 
     (** Whether the map is defined on a given vertex. *)
-    let hasv g v = Fun.has g.vertices v
+    let hasv f x = Fun.has f.vertices x
 
     (** Image of a vertex. *)
-    let appv g v = Fun.app g.vertices v
+    let appv f x = Fun.app f.vertices x
 
     (** Image of an edge. *)
-    let appe g e = Fun.app g.edges e
+    let appe f e = Fun.app f.edges e
 
     (** Add image for a vertex. *)
-    let addv g v v' = { g with vertices = Fun.add g.vertices v v' }
+    let addv f x x' = { f with vertices = Fun.add f.vertices x x' }
 
     (** Add image for edge. *)
-    let adde g e e' = { g with edges = Fun.add g.edges e e' }
+    let adde f e e' = { f with edges = Fun.add f.edges e e' }
+
+    (** Domain in vertices. *)
+    let domv f =
+      Fun.dom f.vertices
+
+    (** Domain in edges. *)
+    let dome f =
+      Fun.dom f.edges
 
     (** Pick an undefined vertex. *)
     let pickv f =
-      let rec aux = function
-        | (v,_)::l -> if List.mem v (vertices f.source) then v else aux l
-        | [] -> raise Not_found
-      in
-      aux f.vertices
+      let l = List.sub (vertices f.source) (domv f) in
+      if l = [] then raise Not_found else List.hd l
+
+    (** Pick an undefined edge. *)
+    let picke f =
+      let l = List.sub (edges f.source) (dome f) in
+      if l = [] then raise Not_found else List.hd l
+
+    (** Whether the function is total on vertices. *)
+    let totalv f =
+      not (is_found pickv f)
+
+    (** Whether the function is total on edges. *)
+    let totale f =
+      not (is_found picke f)
+
+    let total f =
+      totalv f && totale f
 
     (** Sequential composition. *)
     let comp f g =
@@ -393,9 +417,13 @@ module Term = struct
     }
 
   (** Find an instance of the first term in the second one. *)
-  let matchings t t' =
-    let rec aux i =
-      assert false
-    in
-    aux (Graph.Map.empty t t')
+  (* let matchings t t' = *)
+    (* let ans = ref [] in *)
+    (* let queue = Queue.create () in *)
+    (* while not (Queue.is_empty queue) do *)
+      (* let i = Queue.pop in *)
+      (* if Graph.Map.totalv i then ans := i :: !ans else *)
+        (* let v = Graph.Map.pickv  *)
+    (* done *)
+    (* Enum.make (aux (Graph.Map.empty (graph t) (graph t'))) *)
 end
