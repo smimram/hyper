@@ -34,7 +34,7 @@ module Fun = struct
     List.exists (fun (x',_) -> eq x x') f
 
   (** Image of an element. *)
-  let get (f:'a t) x =
+  let app (f:'a t) x =
     List.assq x f
 
   (** Add a binding to a function. *)
@@ -44,7 +44,7 @@ module Fun = struct
 
   (** Sequential composition of functions. *)
   let comp (f:'a t) g : 'a t =
-    List.map (fun (x,y) -> x, get g y) f
+    List.map (fun (x,y) -> x, app g y) f
 end
 
 (** Equivalence relation (wrt physical equality). *)
@@ -58,7 +58,7 @@ module Equiv = struct
   let empty : 'a t = Fun.empty
 
   (** Canonical representative. *)
-  let repr (e : 'a t) x = Fun.get e x
+  let repr (e : 'a t) x = Fun.app e x
 
   (** Representative for a partially defined equivalence relation. *)
   let prepr e x =
@@ -85,7 +85,6 @@ module Equiv = struct
     List.map (fun (z,z') -> z, if eq z' x then y else z') e
 end
 
-
 module List = struct
   include List
 
@@ -99,3 +98,7 @@ module List = struct
   let interq l1 l2 =
     List.filter (fun x -> List.memq x l2) l1
 end
+
+(* module Namer = struct *)
+  (* type t =  *)
+(* end *)

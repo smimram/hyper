@@ -2,7 +2,7 @@
 
 open Stdlib
 
-(** Vertices. *)
+(** Labeled vertices. *)
 module Vertex = struct
   (** A vertex. *)
   type 'v t = { label : 'v }
@@ -13,16 +13,19 @@ module Vertex = struct
   (** Equality *)
   let eq v v' = v == v'
 
+  (** Create a vertex with given label. *)
   let make label = { label }
 
   (** Fresh copy of a vertex. *)
   let copy v = make (label v)
 end
 
-(** Edges. *)
+(** Labeled edges. *)
 module Edge = struct
+  (** An edge. *)
   type ('v,'e) t = { label : 'e; source : 'v Vertex.t list; target : 'v Vertex.t list }
 
+  (** Create an edge. *)
   let make l s t = { label = l; source = s; target = t }
 
   (** Label. *)
@@ -60,11 +63,17 @@ module Graph = struct
 
   let edges g = g.edges
 
-  let empty = { vertices = []; edges = [] }
+  let make vertices edges = { vertices; edges }
 
-  let add_vertex g v  = { g with vertices = v :: g.vertices }
+  (** Empty graph. *)
+  let empty = make [] []
 
-  let add_edge g e s t = { g with edges = (Edge.make e s t) :: g.edges }
+  (** Discrete graph with given set of vertices. *)
+  let discrete u = make u []
+
+  let addv g v  = { g with vertices = v :: g.vertices }
+
+  let adde g e = { g with edges = e :: g.edges }
 
   let map (fv,fe) g =
     {
@@ -110,16 +119,16 @@ module Graph = struct
         edges = List.fold_left (fun f e -> Fun.add f e e) Fun.empty (edges g)
       }
 
-    let get_vertex g v = Fun.get g.vertices v
+    let appv g v = Fun.app g.vertices v
 
-    let get_edge g e = Fun.get g.edges e
+    let appe g e = Fun.app g.edges e
 
-    let add_vertex g v v' = { g with vertices = Fun.add g.vertices v v' }
+    let addv g v v' = { g with vertices = Fun.add g.vertices v v' }
 
-    let add_edge g e e' = { g with edges = Fun.add g.edges e e' }
+    let adde g e e' = { g with edges = Fun.add g.edges e e' }
 
     (** Pick an undefined vertex. *)
-    let pick_vertex f =
+    let pickv f =
       let rec aux = function
         | (v,_)::l -> if List.memq v (vertices f.source) then v else aux l
         | [] -> raise Not_found
@@ -142,7 +151,7 @@ module Graph = struct
     let fe = ref Fun.empty in
     let funv v =
       try
-        Fun.get !fv v
+        Fun.app !fv v
       with
       | Not_found ->
          let v' = Vertex.copy v in
@@ -151,7 +160,7 @@ module Graph = struct
     in
     let fune e =
       try
-        Fun.get !fe e
+        Fun.app !fe e
       with
       | Not_found ->
          let e' = Edge.map funv e in
@@ -169,10 +178,10 @@ module Graph = struct
   (** Quotient of a graph. *)
   let quotient g s =
     let fv = List.fold_left (fun f x -> Fun.add f x (s x)) Fun.empty (vertices g) in
-    let fe = List.fold_left (fun f e -> Fun.add f e (Edge.map (Fun.get fv) e)) Fun.empty (edges g) in
+    let fe = List.fold_left (fun f e -> Fun.add f e (Edge.map (Fun.app fv) e)) Fun.empty (edges g) in
     let g' =
-      let fv = Fun.get fv in
-      let fe = Fun.get fe in
+      let fv = Fun.app fv in
+      let fe = Fun.app fe in
       map (fv,fe) g
     in
     { Map.
@@ -220,9 +229,11 @@ module Signature = struct
   (** Empty signature. *)
   let empty : t = Graph.empty
 
-  let add_vertex (s:t) (v:vertex) : t = Graph.add_vertex s v
+  (** Add a vertex. *)
+  let addv (s:t) (v:vertex) : t = Graph.addv s v
 
-  let add_edge (s:t) l (src:vertex list) (tgt:vertex list) : t = Graph.add_edge s l src tgt
+  (** Add an edge. *)
+  let adde (s:t) e : t = Graph.adde s e
 end
 
                  
@@ -260,6 +271,23 @@ module Term = struct
       make (Graph.Map.target f.graph) f.source f.target
   end
 
+  (** Identity. *)
+  let id u =
+    assert (u = List.uniq u);
+    {
+      graph = Graph.discrete u;
+      source = u;
+      target = u;
+    }
+
+  (** Generating term. *)
+  let generator e =
+    let source = List.map Vertex.make (Edge.source e) in
+    let target = List.map Vertex.make (Edge.target e) in
+    let edge = Edge.make e source target in
+    let graph = Graph.make (source@target) [edge] in
+    make graph source target
+
   (** Copose two terms. *)
   let comp f g =
     assert (List.length (target f) = List.length (source g));
@@ -275,18 +303,27 @@ module Term = struct
     let repr = Equiv.repr r in
     let i1,i2 = Graph.coprod (graph f) (graph g) in
     let i = Graph.quotient (Graph.Map.target i1) repr in
+    let i1 = Graph.Map.comp i1 i in
+    let i2 = Graph.Map.comp i2 i in
     (* TODO: morphism *)
     {
       graph = Graph.Map.target i;
-      source = List.map repr (source f);
-      target = List.map repr (target g)
+      source = List.map (Graph.Map.appv i1) (source f);
+      target = List.map (Graph.Map.appv i2) (target g)
     }
 
   (** Tensor product. *)
-  (* let tens g1 g2 = *)
-    (* { *)
-      (* graph = Graph.coprod (graph g1) (graph g2); *)
-    (* } *)
+  let tens g1 g2 =
+    let i1,i2 = Graph.coprod (graph g1) (graph g2) in
+    let f1 = Graph.Map.appv i1 in
+    let f2 = Graph.Map.appv i2 in
+    let graph = Graph.Map.target i1 in
+    (* TODO: morphism *)
+    {
+      graph;
+      source = (List.map f1 (source g1))@(List.map f2 (source g2));
+      target = (List.map f1 (target g1))@(List.map f2 (target g2))
+    }
 
   (** Find an instance of the second term in the first one. *)
   (* let matchings t t' = *)
