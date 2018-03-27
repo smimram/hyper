@@ -97,7 +97,11 @@ module Graph = struct
   (** Discrete graph with given set of vertices. *)
   let discrete u = make u []
 
-  let addv g v  = { g with vertices = v :: g.vertices }
+  let hasv g x = List.mem x (vertices g)
+
+  let hase g e = List.mem e (edges g)
+
+  let addv g x  = { g with vertices = x :: g.vertices }
 
   let adde g e = { g with edges = e :: g.edges }
 
@@ -108,14 +112,14 @@ module Graph = struct
     }
 
   (** Predecessors of a vertex. *)
-  let vertex_pred g v =
-    assert (List.mem v (vertices g));
-    List.filter (fun e -> List.mem v (Edge.target e)) (edges g)
+  let vertex_pred g x =
+    assert (hasv g x);
+    List.filter (fun e -> List.mem x (Edge.target e)) (edges g)
 
   (** Successors of a vertex. *)
-  let vertex_succ g v =
-    assert (List.mem v (vertices g));
-    List.filter (fun e -> List.mem v (Edge.source e)) (edges g)
+  let vertex_succ g x =
+    assert (hasv g x);
+    List.filter (fun e -> List.mem x (Edge.source e)) (edges g)
 
   (** Predecessors of an edge. *)
   let edge_pred g e = Edge.source e
@@ -133,6 +137,10 @@ module Graph = struct
         vertices : 'v Vertex.t Fun.t;
         edges : ('v,'e) Edge.t Fun.t
       }
+
+    let to_string f =
+      String.concat " " (List.map (fun (x,x') -> Vertex.to_string x ^ " -> " ^ Vertex.to_string x') f.vertices) ^ "\n"
+      ^ String.concat " " (List.map (fun (e,e') -> Edge.to_string e ^ " -> " ^ Edge.to_string e') f.edges) ^ "\n"
 
     (** Source. *)
     let source f = f.source
@@ -425,25 +433,30 @@ module Term = struct
 
   (** Find an instance of the first term in the second one. *)
   let matchings t t' =
+    Printf.printf "MATCH\n%s\nWTIH\n%s\n\n%!" (to_string t) (to_string t');
     let g = graph t in
     let g' = graph t' in
     let ans = ref [] in
     let queue = Queue.create () in
     Queue.push ([], Graph.Map.empty g g') queue;
     while not (Queue.is_empty queue) do
+      (* Printf.printf "loop\n"; *)
       try
         let l,i = Queue.pop queue in
         match l with
         | [] ->
            if not (Graph.Map.totalv i) then
              let x = Graph.Map.pickv i in
-             List.iter (fun x' -> Queue.push ([`V(x,x')],i) queue) (Graph.vertices g)
+             List.iter (fun x' -> Queue.push ([`V(x,x')],i) queue) (Graph.vertices g')
            else if not (Graph.Map.totale i) then
              let e = Graph.Map.picke i in
              List.iter (fun e' -> Queue.push ([`E(e,e')],i) queue) (Graph.edges g')
            else
              ans := i :: !ans
         | `V(x,x')::l ->
+           (* Printf.printf "V: %s = %s\n" (Vertex.to_string x) (Vertex.to_string x'); *)
+           assert (Graph.hasv g x);
+           assert (Graph.hasv g' x');
            if Vertex.label x != Vertex.label x' then raise Exit;
            if Graph.Map.hasv i x then
              if Graph.Map.appv i x != x' then raise Exit else Queue.push (l,i) queue
@@ -463,7 +476,7 @@ module Term = struct
                     ) l2;
                   !ans
              in
-             let p = mappings (Graph.vertex_pred g x) (Graph.vertex_pred g x') in
+             let p = mappings (Graph.vertex_pred g x) (Graph.vertex_pred g' x') in
              let s = mappings (Graph.vertex_succ g x) (Graph.vertex_succ g' x') in
              let p = List.map (List.map (fun (e,e') -> `E(e,e'))) p in
              let s = List.map (List.map (fun (e,e') -> `E(e,e'))) s in
@@ -472,6 +485,8 @@ module Term = struct
                  Queue.push (p@s@l,i) queue
                ) p s
         | `E(e,e')::l ->
+           assert (Graph.hase g e);
+           assert (Graph.hase g' e');
            if Edge.label e != Edge.label e' then raise Exit;
            if Graph.Map.hase i e then
              if Graph.Map.appe i e != e' then raise Exit else Queue.push (l,i) queue
@@ -481,7 +496,9 @@ module Term = struct
              let s = List.map2 (fun y y' -> `V(y,y')) (Edge.target e) (Edge.target e') in
              Queue.push (p@s@l,i) queue
       with
-      | Exit -> ()
+      | Exit ->
+         (* Printf.printf "fail\n"; *)
+         ()
     done;
     !ans
 end

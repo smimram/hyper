@@ -30,4 +30,7 @@ let () =
   let assl = T.comp (T.tens m i) m in
   let f = T.comp (T.tens m i) m in
   let g = T.comp (T.tens m i2) f in
-  Printf.printf "%s\n%!" (T.to_string g)
+  Printf.printf "%s\n\n%!" (T.to_string assl);
+  Printf.printf "%s\n\n%!" (T.to_string g);
+  let m = T.matchings assl g in
+  Printf.printf "%d matchings\n\n%!" (List.length m)
