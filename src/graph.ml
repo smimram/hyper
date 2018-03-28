@@ -294,6 +294,18 @@ module Graph = struct
       vertices = List.sub g.vertices rv;
       edges = List.sub g.edges re
     }
+
+  (** Vertical order on vertices. *)
+  let vorderv g =
+    let p = ref (Poset.create (vertices g)) in
+    List.iter
+      (fun e ->
+        List.iter_pairs
+          (fun x y ->
+            p := Poset.add !p x y
+          ) (Edge.source e) (Edge.target e)
+      ) (edges g);
+    !p
 end
 
 (** Signatures. *)
@@ -319,7 +331,7 @@ module Signature = struct
   let addv (s:t) (v:vertex) : t = Graph.addv s v
 
   (** Add an edge. *)
-  let adde (s:t) e : t = Graph.adde s e
+  let adde (s:t) (e:edge) : t = Graph.adde s e
 end
 
                  
@@ -340,20 +352,29 @@ module Term = struct
   end
  *)
 
+  (** Vertex of a term. *)
+  type vertex = Signature.vertex Vertex.t
+
+  (** Underlying graph of a term. *)
+  type graph = (Signature.vertex, Signature.edge) Graph.t
+
   (** A term on a signature. *)
   type t =
     {
-      graph : (Signature.vertex, Signature.edge) Graph.t;
-      source : (Signature.vertex Vertex.t) list;
-      target : (Signature.vertex Vertex.t) list
+      graph : graph; (** underlying graph *)
+      source : vertex list; (** source *)
+      target : vertex list (** target *)
     }
 
   type term = t
 
+  (** Source. *)
   let source t = t.source
 
+  (** Target. *)
   let target t = t.target
 
+  (** Underlying graph. *)
   let graph t = t.graph
 
   (** String representation. *)
@@ -456,11 +477,22 @@ module Term = struct
     }
 
   (** Find an instance of the first term in the second one. *)
-  let matchings ?(injective=true) t t' =
+  let matchings ?(injective=true) ?(convex=true) t t' =
     Printf.printf "MATCH\n%s\nWTIH\n%s\n\n%!" (to_string t) (to_string t');
     let g = graph t in
     let g' = graph t' in
     let ans = ref [] in
+    let return i =
+      (* Check for convexity *)
+      let is_convex i =
+        let t' = Graph.Map.target i in
+        let p = Graph.vorderv (graph t) in
+        List.for_all_pairs (fun x y -> Poset.lt p y x) (source t) (target t);
+        true
+      in
+      if not convex || is_convex i then
+        ans := i :: !ans
+    in
     let queue = Queue.create () in
     Queue.push ([], Graph.Map.empty g g') queue;
     while not (Queue.is_empty queue) do
@@ -476,7 +508,7 @@ module Term = struct
              let e = Graph.Map.picke i in
              List.iter (fun e' -> Queue.push ([`E(e,e')],i) queue) (Graph.edges g')
            else
-             ans := i :: !ans
+             return i
         | `V(x,x')::l ->
            (* Printf.printf "V: %s = %s\n" (Vertex.to_string x) (Vertex.to_string x'); *)
            assert (Graph.hasv g x);
@@ -534,8 +566,10 @@ module Term = struct
 
   (** Rewriting rules. *)
   module Rule = struct
+    (** A rewriting rule. *)
     type t = term * term
 
+    (** Create a rewriting rule. *)
     let make l r =
       assert (parallel l r);
       (l,r)
