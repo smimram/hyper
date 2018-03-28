@@ -19,6 +19,27 @@ module List = struct
     aux l
 end
 
+module Char = struct
+  include Char
+
+  let is_digit c =
+    let n = code c in
+    code '0' <= n && n <= code '9'
+end
+
+module String = struct
+  include String
+
+  let is_int s =
+    try
+      for i = 0 to String.length s - 1 do
+        if not (Char.is_digit s.[i]) then raise Exit
+      done;
+      true
+    with
+    | Exit -> false
+end
+
 (** Enumerations. *)
 module Enum = struct
   (** An enumeration. *)
@@ -146,6 +167,7 @@ module Listq = struct
   let for_all2 = List.for_all2
   let mem = List.memq
   let assoc = List.assq
+  let find = List.find
 
   (** Subtract a list from another list. *)
   let sub l1 l2 =

@@ -9,6 +9,7 @@ module S = Signature
 module T = Term
 module R = Term.Rule
 
+(*
 let () =
   let s = S.empty in
   let a = V.make "a" in
@@ -39,3 +40,15 @@ let () =
   let m = T.matchings assl g in
   Printf.printf "%d matchings\n\n%!" (List.length m);
   Printf.printf "%s\n\n%!" (T.to_string (Option.get (R.rewrite ass g)))
+ *)
+
+let () =
+  let fname = "test.hyper" in
+  let ic = open_in fname in
+  try
+    while true do
+      let s = input_line ic in
+      Lang.command s
+    done
+  with
+  | End_of_file -> close_in ic

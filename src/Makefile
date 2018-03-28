@@ -1,4 +1,4 @@
-SOURCES = stdlib.ml UID.ml graph.ml hyper.ml
+SOURCES = stdlib.ml UID.ml graph.ml common.ml lang.ml hyper.ml
 RESULT = hyper
 ANNOTATE = true
 DOC_FILES = $(SOURCES)

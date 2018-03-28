@@ -324,6 +324,12 @@ module Signature = struct
   (** An edge in the signature. *)
   type edge = (label,label) Edge.t
 
+  (** Vertices. *)
+  let vertices (s:t) : vertex list = Graph.vertices s
+
+  (** Edges. *)
+  let edges (s:t) : edge list = Graph.edges s
+
   (** Empty signature. *)
   let empty : t = Graph.empty
 
@@ -487,8 +493,8 @@ module Term = struct
       let is_convex i =
         let t' = Graph.Map.target i in
         let p = Graph.vorderv (graph t) in
-        List.for_all_pairs (fun x y -> Poset.lt p y x) (source t) (target t);
-        true
+        List.for_all_pairs (fun x y -> not (Poset.lt p y x)) (source t) (target t)
+        (* List.iter_pairs (fun x y -> if Poset.lt p y x then Printf.printf "LOOP: %s < %s\n\n%!" (Vertex.to_string y) (Vertex.to_string x)) (source t) (target t); true *)
       in
       if not convex || is_convex i then
         ans := i :: !ans
@@ -613,5 +619,49 @@ module Term = struct
         let source = List.map (Graph.Map.appv i) source in
         let target = List.map (Graph.Map.appv i) target in
         Some { graph; source; target }
+  end
+
+  (** Presentations. *)
+  module Pres = struct
+    (** A presentation. *)
+    type t =
+      {
+        signature : Signature.t;
+        rules : (string * Rule.t) list
+      }
+
+    (** Empty presentation. *)
+    let empty = { signature = Signature.empty; rules = [] }
+
+    (** Vertex. *)
+    let getv p name =
+      List.find (fun x -> Vertex.label x = name) (Signature.vertices p.signature)
+
+    (** Edge. *)
+    let gete p name =
+      List.find (fun e -> Edge.label e = name) (Signature.edges p.signature)
+
+    (** Relation. *)
+    let getr p name =
+      List.assoc name p.rules
+
+    (** Add a vertex. *)
+    let addv p name =
+      let v = Vertex.make name in
+      let signature = Signature.addv p.signature v in
+      { p with signature }
+
+    (** Add an edge. *)
+    let adde p name s t =
+      let s = List.map (getv p) s in
+      let t = List.map (getv p) t in
+      let e = Edge.make name s t in
+      let signature = Signature.adde p.signature e in
+      { p with signature }
+
+    (** Add a relation. *)
+    let addr p name l r =
+      let r = Rule.make l r in
+      { p with rules = (name,r)::p.rules }
   end
 end
