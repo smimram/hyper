@@ -55,6 +55,10 @@ module Fun = struct
   let has (f:'a t) x =
     List.exists (fun (x',_) -> eq x x') f
 
+  (** Test whether an element is in the codomain. *)
+  let cohas (f:'a t) x =
+    List.exists (fun (_,x') -> eq x x') f
+
   (** Image of an element. *)
   let app (f:'a t) x =
     List.assq x f
@@ -153,4 +157,8 @@ module Option = struct
   let default x = function
     | Some x -> x
     | None -> x
+
+  let get = function
+    | Some x -> x
+    | None -> raise Not_found
 end

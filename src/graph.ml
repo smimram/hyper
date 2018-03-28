@@ -166,6 +166,10 @@ module Graph = struct
     (** Whether the map is defined on a given edge. *)
     let hase f e = Fun.has f.edges e
 
+    let cohasv f x = Fun.cohas f.vertices x
+
+    let cohase f e = Fun.cohas f.edges e
+
     (** Image of a vertex. *)
     let appv f x = Fun.app f.vertices x
 
@@ -247,7 +251,7 @@ module Graph = struct
       edges = !fe
     }
 
-  (** Quotient of a graph. *)
+  (** Quotient on vertices of a graph. *)
   let quotient g s =
     let fv = List.fold_left (fun f x -> Fun.add f x (s x)) Fun.empty (vertices g) in
     let fe = List.fold_left (fun f e -> Fun.add f e (Edge.map (Fun.app fv) e)) Fun.empty (edges g) in
@@ -283,6 +287,13 @@ module Graph = struct
     let i1 = { i1 with target = g } in
     let i2 = { i2 with target = g } in
     i1, i2
+
+  (** Remove vertices and edges from graph. *)
+  let remove g rv re =
+    {
+      vertices = List.sub g.vertices rv;
+      edges = List.sub g.edges re
+    }
 end
 
 (** Signatures. *)
@@ -337,11 +348,13 @@ module Term = struct
       target : (Signature.vertex Vertex.t) list
     }
 
-  let source f = f.source
+  type term = t
 
-  let target f = f.target
+  let source t = t.source
 
-  let graph f = f.graph
+  let target t = t.target
+
+  let graph t = t.graph
 
   (** String representation. *)
   let to_string f =
@@ -354,6 +367,17 @@ module Term = struct
     src ^ " ---> " ^ tgt ^ "\n" ^ Graph.to_string (graph f)
 
   let make graph source target = { graph; source; target }
+
+  (** Test whether two terms have the same source, and the same target. *)
+  let parallel t1 t2 =
+    let s1 = source t1 in
+    let s2 = source t2 in
+    let t1 = target t1 in
+    let t2 = target t2 in
+    List.length s1 = List.length s2
+    && List.length t1 = List.length t2
+    && List.for_all2 (fun x y -> Vertex.label x == Vertex.label y) s1 s2
+    && List.for_all2 (fun x y -> Vertex.label x == Vertex.label y) t1 t2
 
   (*
   (** Morphisms between terms. *)
@@ -432,7 +456,7 @@ module Term = struct
     }
 
   (** Find an instance of the first term in the second one. *)
-  let matchings t t' =
+  let matchings ?(injective=true) t t' =
     Printf.printf "MATCH\n%s\nWTIH\n%s\n\n%!" (to_string t) (to_string t');
     let g = graph t in
     let g' = graph t' in
@@ -459,46 +483,101 @@ module Term = struct
            assert (Graph.hasv g' x');
            if Vertex.label x != Vertex.label x' then raise Exit;
            if Graph.Map.hasv i x then
-             if Graph.Map.appv i x != x' then raise Exit else Queue.push (l,i) queue
-           else
-             let i = Graph.Map.addv i x x' in
-             (* Map every element of the first list to an element of the second one. *)
-             let rec mappings l1 l2 =
-               match l1 with
-               | [] -> [[]]
-               | x1::l1 ->
-                  let m = mappings l1 l2 in
-                  let ans = ref [] in
-                  List.iter
-                    (fun x2 ->
-                      let m = List.map (fun l -> (x1,x2)::l) m in
-                      ans := m @ !ans
-                    ) l2;
-                  !ans
-             in
-             let p = mappings (Graph.vertex_pred g x) (Graph.vertex_pred g' x') in
-             let s = mappings (Graph.vertex_succ g x) (Graph.vertex_succ g' x') in
-             let p = List.map (List.map (fun (e,e') -> `E(e,e'))) p in
-             let s = List.map (List.map (fun (e,e') -> `E(e,e'))) s in
-             List.iter_pairs
-               (fun p s ->
-                 Queue.push (p@s@l,i) queue
-               ) p s
+             if Graph.Map.appv i x != x' then
+               raise Exit
+             else
+               (Queue.push (l,i) queue; raise Exit);
+           if injective && Graph.Map.cohasv i x' then raise Exit;
+           let i = Graph.Map.addv i x x' in
+           (* Map every element of the first list to an element of the second one. *)
+           let rec mappings l1 l2 =
+             match l1 with
+             | [] -> [[]]
+             | x1::l1 ->
+                let m = mappings l1 l2 in
+                let ans = ref [] in
+                List.iter
+                  (fun x2 ->
+                    let m = List.map (fun l -> (x1,x2)::l) m in
+                    ans := m @ !ans
+                  ) l2;
+                !ans
+           in
+           let p = mappings (Graph.vertex_pred g x) (Graph.vertex_pred g' x') in
+           let s = mappings (Graph.vertex_succ g x) (Graph.vertex_succ g' x') in
+           let p = List.map (List.map (fun (e,e') -> `E(e,e'))) p in
+           let s = List.map (List.map (fun (e,e') -> `E(e,e'))) s in
+           List.iter_pairs
+             (fun p s ->
+               Queue.push (p@s@l,i) queue
+             ) p s
         | `E(e,e')::l ->
            assert (Graph.hase g e);
            assert (Graph.hase g' e');
            if Edge.label e != Edge.label e' then raise Exit;
            if Graph.Map.hase i e then
-             if Graph.Map.appe i e != e' then raise Exit else Queue.push (l,i) queue
-           else
-             let i = Graph.Map.adde i e e' in
-             let p = List.map2 (fun x x' -> `V(x,x')) (Edge.source e) (Edge.source e') in
-             let s = List.map2 (fun y y' -> `V(y,y')) (Edge.target e) (Edge.target e') in
-             Queue.push (p@s@l,i) queue
+             if Graph.Map.appe i e != e' then
+               raise Exit
+             else
+               (Queue.push (l,i) queue; raise Exit);
+           if Graph.Map.cohase i e' then raise Exit;
+           let i = Graph.Map.adde i e e' in
+           let p = List.map2 (fun x x' -> `V(x,x')) (Edge.source e) (Edge.source e') in
+           let s = List.map2 (fun y y' -> `V(y,y')) (Edge.target e) (Edge.target e') in
+           Queue.push (p@s@l,i) queue
       with
       | Exit ->
          (* Printf.printf "fail\n"; *)
          ()
     done;
     !ans
+
+  (** Rewriting rules. *)
+  module Rule = struct
+    type t = term * term
+
+    let make l r =
+      assert (parallel l r);
+      (l,r)
+
+    (** Apply a rewriting rule. *)
+    let rewrite (l,r) t =
+      let m = matchings l t in
+      if m = [] then None else
+        let i = List.hd m in
+        let dl = (source l)@(target l) in
+        let g = graph t in
+        (* Remove matched part. *)
+        let g =
+          let rv = List.sub (Graph.vertices (graph l)) dl in
+          let re = Graph.edges (graph l) in
+          let rv = List.map (Graph.Map.appv i) rv in
+          let re = List.map (Graph.Map.appe i) re in
+          Graph.remove g rv re
+        in
+        (* Add new part. *)
+        let i, g =
+          let dr = (source r)@(target r) in
+          let i1,i2 = Graph.coprod g (graph r) in
+          let g = Graph.Map.target i1 in
+          Printf.printf "coprod:\n%s\n\n" (Graph.to_string g);
+          let s =
+            List.map2
+              (fun x x' ->
+                let x = Graph.Map.appv i x in
+                let x = Graph.Map.appv i1 x in
+                let x' = Graph.Map.appv i2 x' in
+                x', x
+              ) dl dr
+          in
+          let s x = try List.assoc x s with Not_found -> x in
+          i1, Graph.Map.target (Graph.quotient g s)
+        in
+        let graph = g in
+        let source = source t in
+        let target = target t in
+        let source = List.map (Graph.Map.appv i) source in
+        let target = List.map (Graph.Map.appv i) target in
+        Some { graph; source; target }
+  end
 end
