@@ -1,3 +1,10 @@
 op m : 2 -> 1
+op u : 0 -> 1
+op d : 1 -> 2
+op e : 1 -> 0
 
-show 2+1
+rule ass : (m+1)*m => (1+m)*m
+rule u-l : (u+1)*m => 1
+rule u-r : (1+u)*m => 1
+
+normalize (m+2)*(m+1)*m

@@ -484,7 +484,7 @@ module Term = struct
 
   (** Find an instance of the first term in the second one. *)
   let matchings ?(injective=true) ?(convex=true) t t' =
-    Printf.printf "MATCH\n%s\nWTIH\n%s\n\n%!" (to_string t) (to_string t');
+    (* Printf.printf "MATCH\n%s\nWTIH\n%s\n\n%!" (to_string t) (to_string t'); *)
     let g = graph t in
     let g' = graph t' in
     let ans = ref [] in
@@ -600,7 +600,7 @@ module Term = struct
           let dr = (source r)@(target r) in
           let i1,i2 = Graph.coprod g (graph r) in
           let g = Graph.Map.target i1 in
-          Printf.printf "coprod:\n%s\n\n" (Graph.to_string g);
+          (* Printf.printf "coprod:\n%s\n\n" (Graph.to_string g); *)
           let s =
             List.map2
               (fun x x' ->

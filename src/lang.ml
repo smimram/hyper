@@ -18,17 +18,23 @@ let kinds_of_int n = List.init n (fun _ -> pro_kind)
 let expr =
   let lexer = Genlex.make_lexer ["*";"+";"(";")"] in
   fun s ->
+  (* Printf.printf "expr: '%s'\n%!" s; *)
   let rec comp = parser
-      | [< t1 = atom; 'Genlex.Kwd "*"; t2 = comp >] -> T.comp t1 t2
-      | [< t = tens >] -> t
+      | [< t = tens; f = comps >] -> f t
+  and comps = parser
+      | [< 'Genlex.Kwd "*"; t' = tens; f = comps >] -> fun t -> f (T.comp t t')
+      | [< >] -> fun t -> t
   and tens = parser
-      | [< t1 = atom; 'Genlex.Kwd "+"; t2 = comp >] -> T.tens t1 t2
-      | [< t = atom >] -> t
+      | [< t = atom; f = tenss >] -> f t
+  and tenss = parser
+      | [< 'Genlex.Kwd "+"; t' = atom; f = tenss >] -> fun t -> f (T.tens t t')
+      | [< >] -> fun t -> t
   and atom = parser
       | [< 'Genlex.Int n >] -> T.id (List.map (P.getv !pres) (kinds_of_int n))
+      | [< 'Genlex.Ident s >] -> T.generator (P.gete !pres s)
       | [< 'Genlex.Kwd "("; t = comp; 'Genlex.Kwd ")" >] -> t
   in
-  atom (lexer (Stream.of_string s))
+  comp (lexer (Stream.of_string s))
 
 (** Execute a command. *)
 let command cmd  =
@@ -47,5 +53,24 @@ let command cmd  =
   | ["show";e] ->
      let t = expr e in
      Printf.printf "%s\n%!" (T.to_string t)
+  | ["normalize";e] ->
+     let t = ref (expr e) in
+     Printf.printf "%s\n\n%!" (T.to_string !t);
+     let loop = ref true in
+     while !loop do
+       try
+         List.iter
+           (fun (_,r) ->
+             match T.Rule.rewrite r !t with
+             | Some t' ->
+                t := t';
+                Printf.printf "%s\n\n%!" (T.to_string !t);
+                raise Exit
+             | None -> ()
+           ) !pres.rules;
+         loop := false
+       with
+       | Exit -> ()
+     done
   | cmd::_ -> error ("Unknown command: " ^ cmd)
   | [] -> ()
