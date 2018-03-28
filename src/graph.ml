@@ -573,15 +573,22 @@ module Term = struct
   (** Rewriting rules. *)
   module Rule = struct
     (** A rewriting rule. *)
-    type t = term * term
+    type t =
+      {
+        label : string;
+        source : term;
+        target : term
+      }
 
     (** Create a rewriting rule. *)
-    let make l r =
+    let make label l r =
       assert (parallel l r);
-      (l,r)
+      { label; source = l; target = r}
 
     (** Apply a rewriting rule. *)
-    let rewrite (l,r) t =
+    let rewrite r t =
+      let l = r.source in
+      let r = r.target in
       let m = matchings l t in
       if m = [] then None else
         let i = List.hd m in
@@ -619,6 +626,12 @@ module Term = struct
         let source = List.map (Graph.Map.appv i) source in
         let target = List.map (Graph.Map.appv i) target in
         Some { graph; source; target }
+
+    let label r = r.label
+
+    let source r = r.source
+
+    let target r = r.target
   end
 
   (** Presentations. *)
@@ -627,8 +640,12 @@ module Term = struct
     type t =
       {
         signature : Signature.t;
-        rules : (string * Rule.t) list
+        rules : Rule.t list
       }
+
+    let signature p = p.signature
+
+    let rules p = p.rules
 
     (** Empty presentation. *)
     let empty = { signature = Signature.empty; rules = [] }
@@ -643,7 +660,7 @@ module Term = struct
 
     (** Relation. *)
     let getr p name =
-      List.assoc name p.rules
+      List.find (fun r -> Rule.label r = name) (rules p)
 
     (** Add a vertex. *)
     let addv p name =
@@ -661,7 +678,7 @@ module Term = struct
 
     (** Add a relation. *)
     let addr p name l r =
-      let r = Rule.make l r in
-      { p with rules = (name,r)::p.rules }
+      let r = Rule.make name l r in
+      { p with rules = r::p.rules }
   end
 end

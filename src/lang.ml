@@ -38,39 +38,48 @@ let expr =
 
 (** Execute a command. *)
 let command cmd  =
+  (* printf "cmd: '%s'\n" cmd; *)
   let cmd = String.split_on_char ' ' cmd in
   let cmd = List.filter (fun s -> s <> "") cmd in
   match cmd with
   | ["kind";k] -> pres := P.addv !pres k
-  | ["op";o;":";s;"->";t] when String.is_int s && String.is_int t ->
+  | ["op";o;":";s;"->";t]
+  | ["op";o;s;t] when String.is_int s && String.is_int t ->
      let s = kinds_of_int (int_of_string s) in
      let t = kinds_of_int (int_of_string t) in
      pres := P.adde !pres o s t
-  | ["rule";r;":";s;"=>";t] ->
+  | ["rule";r;":";s;"=>";t]
+  | ["rule";r;s;t] ->
      let s = expr s in
      let t = expr t in
      pres := P.addr !pres r s t
   | ["show";e] ->
      let t = expr e in
-     Printf.printf "%s\n%!" (T.to_string t)
+     print (T.to_string t ^ "\n")
   | ["normalize";e] ->
      let t = ref (expr e) in
-     Printf.printf "%s\n\n%!" (T.to_string !t);
+     print (T.to_string !t ^ "\n\n");
      let loop = ref true in
      while !loop do
        try
          List.iter
-           (fun (_,r) ->
+           (fun r ->
              match T.Rule.rewrite r !t with
              | Some t' ->
                 t := t';
-                Printf.printf "%s\n\n%!" (T.to_string !t);
+                print (T.to_string !t ^ "\n\n");
                 raise Exit
              | None -> ()
-           ) !pres.rules;
+           ) (P.rules !pres);
          loop := false
        with
        | Exit -> ()
      done
+  | ["ops"] -> print (String.concat " " (List.map Graph.Edge.label (Graph.Signature.edges (P.signature !pres))) ^ "\n")
+  | ["rules"] -> print (String.concat " " (List.map T.Rule.label (P.rules !pres)) ^ "\n")
+  | ["help"] -> print ("You're on your own, sorry.\n")
   | cmd::_ -> error ("Unknown command: " ^ cmd)
   | [] -> ()
+
+let command cmd =
+  List.iter command (String.split_on_char '\n' cmd)

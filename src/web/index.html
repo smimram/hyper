@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hypergraph rewriting</title>
+    <meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>
+    <link rel="stylesheet" type="text/css" href="hyper.css"/>
+    <script type="text/javascript" src="hyper.js"></script>
+  </head>
+  <body>
+    <h1>Hypergraph rewriting</h1>
+    <div id="graph"></div>
+    <div id="toplevel"></div>
+
+    <script type="text/javascript">
+      function ku(event) {
+        if (event.keyCode == 13)
+          document.getElementById("send").click();
+      }
+      function init() {
+        document.getElementById("input").onkeyup = ku;
+      }
+    </script>
+  </body>
+</html>
