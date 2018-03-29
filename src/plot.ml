@@ -20,7 +20,7 @@ module C = Complex
 
 module Physics = struct
   (** Maximum speed. *)
-  let max_speed = ref 1000000.
+  let max_speed = ref 1.
   (** Damping factor. *)
   let damping = ref 0.95
   (** Charge of a particle. *)
@@ -28,7 +28,7 @@ module Physics = struct
   (** Length of a spring. *)
   let spring_length = ref 0.2
   (** Stiffness of a spring. *)
-  let spring_k = ref 0.5
+  let spring_k = ref 1.
 
   (** An element of a graph. *)
   type element =
@@ -177,7 +177,8 @@ module Physics = struct
         p.v <- C.add p.v (C.cmul dt p.a);
         p.v <- C.cmul !damping p.v;
         let vv = C.norm p.v in
-        if vv > !max_speed then p.v <- C.cmul (!max_speed /. vv) p.v
+        if vv > !max_speed then p.v <- C.cmul (!max_speed /. vv) p.v;
+        if p.fixed then p.v <- C.zero
       ) w.points
 
   (** Update position. *)
@@ -276,16 +277,29 @@ let make t =
 
 let graphics t =
   Graphics.open_graph "";
+  Graphics.auto_synchronize true;
   let w = make t in
   let border = 10 in
   let plot () =
     let px_of_p p =
-      let width = Graphics.size_x () - 2 * border in
-      let height = Graphics.size_y () - 2 * border in
+      let width, height = Graphics.size_x (), Graphics.size_y () in
+      let width = width - 2 * border in
+      let height = height - 2 * border in
       let x = p.C.re *. float width in
       let y = p.C.im *. float height in
       int_of_float x + border, int_of_float y + border
     in
+    Graphics.clear_graph ();
+    (* Lines *)
+    Graphics.set_color Graphics.black;
+    List.iter
+      (fun s ->
+        let x,y = px_of_p (P.Spring.source s).P.p in
+        Graphics.moveto x y;
+        let x,y = px_of_p (P.Spring.target s).P.p in
+        Graphics.lineto x y
+      ) w.springs;
+    (* Points *)
     List.iter
       (fun p ->
         let color =
@@ -297,19 +311,11 @@ let graphics t =
         Graphics.set_color color;
         Graphics.fill_circle x y 5
       ) w.points;
-    Graphics.set_color Graphics.black;
-    List.iter
-      (fun s ->
-        let x,y = px_of_p (P.Spring.source s).P.p in
-        Graphics.moveto x y;
-        let x,y = px_of_p (P.Spring.target s).P.p in
-        Graphics.lineto x y
-      ) w.springs
+    Graphics.synchronize ()
   in
   plot ();
-  while not (Graphics.key_pressed ()) do
+  while not (Graphics.key_pressed ()) (* && P.energy w >= 0.0001 *) do
     P.step w 0.1;
-    Graphics.clear_graph ();
     plot ();
     Unix.sleepf 0.01
   done

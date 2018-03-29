@@ -11,6 +11,5 @@ normalize (m*2);(m*1);m
 
 ops
 rules
-plot m*2;(m*1);m
-plot m
-# sleep 1
+#plot m*2;(m*1);m
+plot m;d;(d*1);1*m

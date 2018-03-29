@@ -665,7 +665,7 @@ module Rule = struct
       let target = Term.target t in
       let source = List.map (Graph.Map.appv i) source in
       let target = List.map (Graph.Map.appv i) target in
-      Some { Term. graph; source; target }
+      Some { Term.graph; source; target }
 end
 
 (** Presentations. *)
