@@ -718,5 +718,37 @@ module Pres = struct
   let addr p name l r =
     let r = Rule.make name l r in
     { p with rules = r::p.rules }
+
+  (** Normalization steps. *)
+  let normalize p t =
+    let t = ref t in
+    let ans =
+      Enum.make
+        (fun () ->
+          try
+            List.iter
+              (fun r ->
+                match Rule.rewrite r !t with
+                | Some t' ->
+                   t := t';
+                   raise Exit
+                | None -> ()
+              ) (rules p);
+            raise Enum.End
+          with
+          | Exit -> !t
+        )
+    in
+    let first = ref true in
+    Enum.make
+      (fun () ->
+        if !first then
+          (
+            first := false;
+            !t
+          )
+        else
+          ans ()
+      )
 end
 

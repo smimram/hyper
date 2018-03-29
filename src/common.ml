@@ -1,7 +1,7 @@
 (** Common functions. *)
 
 let print_string_fun =
-  ref print_string
+  ref (fun s -> print_string s; flush stdout)
 
 (** Printing function. *)
 let print s = !print_string_fun s

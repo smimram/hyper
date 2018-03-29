@@ -57,28 +57,14 @@ let command cmd  =
   | ["show";e] ->
      let t = expr e in
      print (T.to_string t ^ "\n")
+  | ["plot";e] -> Plot.graphics_term (expr e)
   | ["normalize";e] ->
-     let t = ref (expr e) in
-     print (T.to_string !t ^ "\n\n");
-     let loop = ref true in
-     while !loop do
-       try
-         List.iter
-           (fun r ->
-             match Rule.rewrite r !t with
-             | Some t' ->
-                t := t';
-                print (T.to_string !t ^ "\n\n");
-                raise Exit
-             | None -> ()
-           ) (P.rules !pres);
-         loop := false
-       with
-       | Exit -> ()
-     done
+     let t = expr e in
+     print (T.to_string t ^ "\n\n");
+     Enum.iter (fun t -> print (T.to_string t ^ "\n\n")) (P.normalize !pres t)
+  | ["plotnormalize";e] -> Plot.graphics_terms (P.normalize !pres (expr e))
   | ["ops"] -> print (String.concat " " (List.map Graph.Edge.label (Graph.Signature.edges (P.signature !pres))) ^ "\n")
   | ["rules"] -> print (String.concat " " (List.map Rule.label (P.rules !pres)) ^ "\n")
-  | ["plot";e] -> Plot.graphics (expr e)
   | ["sleep";n] -> Unix.sleep (int_of_string n)
   | ["help"] -> print ("You're on your own, sorry.\n")
   | cmd::_ -> error ("Unknown command: " ^ cmd)

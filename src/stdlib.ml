@@ -52,7 +52,7 @@ module Enum = struct
   (** End of the enumeration. *)
   exception End
 
-  let make f = f
+  let make f : 'a t = f
 
   (** Empty enumeration. *)
   let empty = make (fun () -> raise End)
@@ -77,6 +77,14 @@ module Enum = struct
 
   let map f e =
     fun () -> f (get e)
+
+  let iter f e =
+    try
+      while true do
+        f (get e)
+      done
+    with
+    | End -> ()
 end
 
 (** Functions (with physical equality). *)

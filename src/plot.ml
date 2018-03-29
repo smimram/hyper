@@ -74,7 +74,7 @@ module Physics = struct
 
     let vertex ?fixed ?p v = make ?fixed ?p (`Vertex v)
 
-    let edge e = make (`Edge e)
+    let edge ?p e = make ?p (`Edge e)
   end
 
   (** A spring. *)
@@ -139,6 +139,18 @@ module Physics = struct
   (** Is a given vertex defined? *)
   let has_vertex w v =
     is_found (vertex w) v
+
+  (** Point associated to given edge. *)
+  let edge w e =
+    List.find
+      (fun p ->
+        match p.element with
+        | `Edge e' -> e' == e
+        | _ -> false
+      ) w.points
+
+  let has_edge w e =
+    is_found (edge w) e
 
   (** Action of a force on a point. *)
   let act f p =
@@ -326,6 +338,7 @@ module Physics = struct
     let () =
       List.iter
         (fun v ->
+          if has_vertex w v then Printf.printf "reuse vertex: %s\n%!" (Vertex.to_string v);
           (* Try to reuse previous position. *)
           let p = try Some (vertex w0 v).p with Not_found -> None in
           add_point w (Point.vertex ?p v)
@@ -335,7 +348,10 @@ module Physics = struct
     let () =
       List.iter
         (fun e ->
-          let pe = Point.edge e in
+          (* Point *)
+          if has_edge w e then Printf.printf "reuse edge: %s\n%!" (Edge.to_string e);
+          let p = try Some (edge w0 e).p with Not_found -> None in
+          let pe = Point.edge ?p e in
           add_point w pe;
           (* Springs *)
           let ls = List.map (fun v -> vertex w v, pe) (Edge.source e) in
@@ -396,7 +412,7 @@ let graphics_plot vg =
     ) vg;
   Graphics.synchronize ()
 
-let graphics t =
+let graphics_term t =
   graphics_init ();
   let w = P.make t in
   let plot () =
@@ -406,4 +422,22 @@ let graphics t =
     plot ();
     P.step w 0.1;
     Unix.sleepf 0.01
-  done;
+  done
+
+let graphics_terms t =
+  graphics_init ();
+  let w = ref P.empty in
+  let plot () = graphics_plot (P.plot !w) in
+  try
+    while true do
+      let t = Enum.get t in
+      Printf.printf "graphics:\n%s\n%!" (Term.to_string t);
+      w := P.update !w t;
+      while not (Graphics.key_pressed ()) && P.energy !w >= 0.001 do
+        plot ();
+        P.step !w 0.1;
+        Unix.sleepf 0.01
+      done
+    done
+  with
+  | Enum.End -> ()
