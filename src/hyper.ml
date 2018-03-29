@@ -43,6 +43,7 @@ let () =
  *)
 
 let () =
+  Random.self_init ();
   let fname = "test.hyper" in
   let ic = open_in fname in
   try

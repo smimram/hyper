@@ -377,6 +377,9 @@ module Term = struct
   (** Vertex of a term. *)
   type vertex = Signature.vertex Vertex.t
 
+  (** Edge of a term. *)
+  type edge = (Signature.vertex, Signature.edge) Edge.t
+
   (** Underlying graph of a term. *)
   type graph = (Signature.vertex, Signature.edge) Graph.t
 

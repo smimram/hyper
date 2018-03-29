@@ -3,13 +3,14 @@ op u : 0 -> 1
 op d : 1 -> 2
 op e : 1 -> 0
 
-rule ass : (m+1)*m => (1+m)*m
-rule u-l : (u+1)*m => 1
-rule u-r : (1+u)*m => 1
+rule ass : (m*1);m => (1*m);m
+rule u-l : (u*1);m => 1
+rule u-r : (1*u);m => 1
 
-normalize (m+2)*(m+1)*m
+normalize (m*2);(m*1);m
 
 ops
 rules
-plot (m+1)*m
-sleep 1
+plot m*2;(m*1);m
+plot m
+# sleep 1

@@ -17,18 +17,18 @@ let () = pres := P.addv !pres pro_kind
 let kinds_of_int n = List.init n (fun _ -> pro_kind)
 
 let expr =
-  let lexer = Genlex.make_lexer ["*";"+";"(";")"] in
+  let lexer = Genlex.make_lexer [";";"*";"(";")"] in
   fun s ->
   (* Printf.printf "expr: '%s'\n%!" s; *)
   let rec comp = parser
       | [< t = tens; f = comps >] -> f t
   and comps = parser
-      | [< 'Genlex.Kwd "*"; t' = tens; f = comps >] -> fun t -> f (T.comp t t')
+      | [< 'Genlex.Kwd ";"; t' = tens; f = comps >] -> fun t -> f (T.comp t t')
       | [< >] -> fun t -> t
   and tens = parser
       | [< t = atom; f = tenss >] -> f t
   and tenss = parser
-      | [< 'Genlex.Kwd "+"; t' = atom; f = tenss >] -> fun t -> f (T.tens t t')
+      | [< 'Genlex.Kwd "*"; t' = atom; f = tenss >] -> fun t -> f (T.tens t t')
       | [< >] -> fun t -> t
   and atom = parser
       | [< 'Genlex.Int n >] -> T.id (List.map (P.getv !pres) (kinds_of_int n))

@@ -17,6 +17,10 @@ module List = struct
       | [] -> []
     in
     aux l
+  
+  (** Iterate over pairs of elements of two lists. *)
+  let iter_pairs f l1 l2 =
+    iter (fun x -> iter (fun y -> f x y) l2) l1
 end
 
 module Char = struct
@@ -160,6 +164,7 @@ module Listq = struct
   let map = List.map
   let map2 = List.map2
   let iter = List.iter
+  let iteri = List.iteri
   let filter = List.filter
   let fold_left = List.fold_left
   let fold_left2 = List.fold_left2
@@ -183,9 +188,7 @@ module Listq = struct
     | x::l -> x::(unique l)
     | [] -> []
 
-  (** Iterate over pairs of elements of two lists. *)
-  let iter_pairs f l1 l2 =
-    iter (fun x -> iter (fun y -> f x y) l2) l1
+  let iter_pairs = List.iter_pairs
 
   (** Pairs of elements of two lists. *)
   let pairs l1 l2 =
