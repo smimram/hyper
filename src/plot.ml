@@ -153,8 +153,18 @@ module Physics = struct
   (** Repulse from boundary. *)
   let boundary w =
     List.iter
-      (fun s ->
-        ()
+      (fun p ->
+        let clip x =
+          let c = 0.001 in
+          min (1. -. c) (max c x)
+        in
+        let c = 1000. in
+        let x = clip p.p.re in
+        let y = clip p.p.im in
+        let fx = 1. /. (c *. x) +. 1. /. (c *. (x -. 1.)) in
+        let fy = 1. /. (c *. y) +. 1. /. (c *. (y -. 1.)) in
+        let f = { C.re = fx ; im = fy } in
+        act f p
       ) w.points
 
   let clear_a w =
@@ -175,15 +185,14 @@ module Physics = struct
     let clip p =
       let clipped = ref false in
       let clip x = if x < 0. then (clipped := true; 0.) else if x > 1. then (clipped := true; 1.) else x in
-      let p = C.map clip p.p in
+      p.p <- C.map clip p.p;
       (* if !clipped then p.v <- C.zero; *)
       (* if !clipped then p.a <- C.zero; *)
-      p
     in
     List.iter
       (fun p ->
         if not p.fixed then p.p <- C.add p.p (C.cmul dt p.v);
-        p.p <- clip p
+        clip p
       ) w.points
 
   (** Total energy. *)
@@ -198,6 +207,7 @@ module Physics = struct
   let step w dt =
     clear_a w;
     coulomb w;
+    boundary w;
     hooke w;
     update_v w dt;
     update_p w dt
