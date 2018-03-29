@@ -18,13 +18,19 @@ module Complex = struct
 end
 module C = Complex
 
+(** Vector graphics. *)
+type vg =
+  | Vertex of C.t
+  | Edge of C.t
+  | Wire of C.t * C.t
+
 module Physics = struct
   (** Maximum speed. *)
   let max_speed = ref 1.
   (** Damping factor. *)
   let damping = ref 0.95
   (** Charge of a particle. *)
-  let charge = ref 0.1
+  let charge = ref 0.01
   (** Length of a spring. *)
   let spring_length = ref 0.2
   (** Stiffness of a spring. *)
@@ -36,8 +42,9 @@ module Physics = struct
 
   (** An element of a graph. *)
   type element =
-    | Vertex of Term.vertex (** a vertex *)
-    | Edge of Term.edge (** an edge *)
+    [ `Vertex of Term.vertex (** a vertex *)
+    | `Edge of Term.edge (** an edge *)
+    ]
 
   (** A point. *)
   type point =
@@ -54,12 +61,8 @@ module Physics = struct
   module Point = struct
     type t = point
 
-    let make ?(fixed=false) ?x ?y e : t =
-      let p =
-        match x,y with
-        | Some x, Some y -> { C.re = x; im = y }
-        | _ -> { re = Random.float 1.; im = Random.float 1. }
-      in
+    let make ?(fixed=false) ?p e : t =
+      let p = Option.default { C.re = Random.float 1.; im = Random.float 1. } p in
       {
         element = e;
         m = 1.;
@@ -69,9 +72,9 @@ module Physics = struct
         a = { re = Random.float 2. -. 1.; im = Random.float 2. -. 1. }
       }
 
-    let vertex ?fixed ?x ?y v = make ?fixed ?x ?y (Vertex v)
+    let vertex ?fixed ?p v = make ?fixed ?p (`Vertex v)
 
-    let edge e = make (Edge e)
+    let edge e = make (`Edge e)
   end
 
   (** A spring. *)
@@ -129,7 +132,7 @@ module Physics = struct
     List.find
       (fun p ->
         match p.element with
-        | Vertex v' -> v' == v
+        | `Vertex v' -> v' == v
         | _ -> false
       ) w.points
 
@@ -194,9 +197,9 @@ module Physics = struct
         let l2 = C.normalize l2 in
         let a = C.div l2 l1 in
         let a0 = C.polar 1. !tspring_angle in
-        let f = C.cmul !tspring_k (C.mul l1 (C.sub a0 a)) in
-        act f s.target;
-        act (C.neg f) s.source
+        let f = C.cmul !tspring_k (C.sub a0 a) in
+        act (C.mul l1 f) s.target;
+        act (C.mul l2 (C.neg f)) s.source
       ) w.tsprings
 
   (** Repulse from boundary. *)
@@ -263,118 +266,144 @@ module Physics = struct
     tspring w;
     update_v w dt;
     update_p w dt
-end
-module P = Physics
 
-let make t =
-  let g = Term.graph t in
-  let w = P.empty in
-  (* Source. *)
-  let () =
-    let source = Term.source t in
-    let n = List.length source in
-    if n = 1 then
-      let v = List.hd source in
-      let p = P.Point.vertex ~fixed:true ~x:0. ~y:0.5 v in
-      P.add_point w p
-    else
-    List.iteri
-      (fun i v ->
-        let y = float i /. (float (n-1)) in
-        let p = P.Point.vertex ~fixed:true ~x:0. ~y v in
-        P.add_point w p
-      ) source
-  in
-  (* Target. *)
-  let () =
-    let target = Term.target t in
-    let n = List.length target in
-    if n = 1 then
-      let v = List.hd target in
-      let p = P.Point.vertex ~fixed:true ~x:1. ~y:0.5 v in
-      P.add_point w p
-    else
-      List.iteri
-        (fun i v ->
-          let y = float i /. (float (n-1)) in
-          let p = P.Point.vertex ~fixed:true ~x:1. ~y v in
-          P.add_point w p
-        ) target
-  in
-  (* Vertices. *)
-  let () =
-    List.iter
-      (fun v ->
-        let p = P.Point.vertex v in
-        P.add_point w p
-      ) (Listq.sub (Graph.vertices g) ((Term.source t)@(Term.target t)))
-  in 
-  (* Edges. *)
-  let () =
-    List.iter
-      (fun e ->
-        let pe = P.Point.edge e in
-        P.add_point w pe;
-        (* Springs *)
-        let ls = List.map (fun v -> P.vertex w v, pe) (Edge.source e) in
-        let lt = List.map (fun v -> pe, P.vertex w v) (Edge.target e) in
-        List.iter
-          (fun (p1,p2) ->
-            let s = P.Spring.make p1 p2 in
-            P.add_spring w s
-          ) (ls@lt);
-        (* Torsion springs *)
-        let rec iter f = function
-          | x::y::l -> f x y; iter f (y::l)
-          | _ -> ()
-        in
-        iter (fun x y -> P.add_tspring w (P.TSpring.make (P.vertex w x) pe (P.vertex w y))) (Edge.source e);
-        iter (fun y x -> P.add_tspring w (P.TSpring.make (P.vertex w x) pe (P.vertex w y))) (Edge.target e)
-      ) (Graph.edges g)
-  in
-  w
-
-let graphics t =
-  Graphics.open_graph "";
-  Graphics.auto_synchronize true;
-  let w = make t in
-  let border = 10 in
-  let plot () =
-    let px_of_p p =
-      let width, height = Graphics.size_x (), Graphics.size_y () in
-      let width = width - 2 * border in
-      let height = height - 2 * border in
-      let x = p.C.re *. float width in
-      let y = p.C.im *. float height in
-      int_of_float x + border, int_of_float y + border
-    in
-    Graphics.clear_graph ();
-    (* Lines *)
-    Graphics.set_color Graphics.black;
-    List.iter
-      (fun s ->
-        let x,y = px_of_p (P.Spring.source s).P.p in
-        Graphics.moveto x y;
-        let x,y = px_of_p (P.Spring.target s).P.p in
-        Graphics.lineto x y
-      ) w.springs;
+  (** Plot. *)
+  let plot w =
+    let ans = ref [] in
+    let add x = ans := x :: !ans in
     (* Points *)
     List.iter
       (fun p ->
-        let color =
-          match p.P.element with
-          | Vertex _ -> Graphics.black
-          | Edge _ -> Graphics.red
-        in
-        let x, y = px_of_p p.P.p in
-        Graphics.set_color color;
-        Graphics.fill_circle x y 5
+        match p.element with
+        | `Vertex _ -> add (Vertex p.p)
+        | `Edge _ -> add (Edge p.p)
       ) w.points;
-    Graphics.synchronize ()
+    (* Lines *)
+    List.iter
+      (fun s ->
+        add (Wire ((Spring.source s).p, (Spring.target s).p))
+      ) w.springs;
+    !ans
+
+  (** Update the physical model of a term. *)
+  (* TODO: use a morphism instead of the identity *)
+  let update w0 t =
+    let g = Term.graph t in
+    let w = empty in
+    (* Source. *)
+    let () =
+      let source = Term.source t in
+      let n = List.length source in
+      if n = 1 then
+        let v = List.hd source in
+        let p = Point.vertex ~fixed:true ~p:{C.re=0.; im=0.5} v in
+        add_point w p
+      else
+        List.iteri
+          (fun i v ->
+            let y = float i /. (float (n-1)) in
+            let p = Point.vertex ~fixed:true ~p:{C.re=0.; im=y} v in
+            add_point w p
+          ) source
+    in
+    (* Target. *)
+    let () =
+      let target = Term.target t in
+      let n = List.length target in
+      if n = 1 then
+        let v = List.hd target in
+        let p = Point.vertex ~fixed:true ~p:{C.re=1.; im=0.5} v in
+        add_point w p
+      else
+        List.iteri
+          (fun i v ->
+            let y = float i /. (float (n-1)) in
+            let p = Point.vertex ~fixed:true ~p:{C.re=1.; im=y} v in
+            add_point w p
+          ) target
+    in
+    (* Vertices. *)
+    let () =
+      List.iter
+        (fun v ->
+          (* Try to reuse previous position. *)
+          let p = try Some (vertex w0 v).p with Not_found -> None in
+          add_point w (Point.vertex ?p v)
+        ) (Listq.sub (Graph.vertices g) ((Term.source t)@(Term.target t)))
+    in 
+    (* Edges. *)
+    let () =
+      List.iter
+        (fun e ->
+          let pe = Point.edge e in
+          add_point w pe;
+          (* Springs *)
+          let ls = List.map (fun v -> vertex w v, pe) (Edge.source e) in
+          let lt = List.map (fun v -> pe, vertex w v) (Edge.target e) in
+          List.iter
+            (fun (p1,p2) ->
+              let s = Spring.make p1 p2 in
+              add_spring w s
+            ) (ls@lt);
+          (* Torsion springs *)
+          let rec iter f = function
+            | x::y::l -> f x y; iter f (y::l)
+            | _ -> ()
+          in
+          iter (fun x y -> add_tspring w (TSpring.make (vertex w x) pe (vertex w y))) (Edge.source e);
+          iter (fun y x -> add_tspring w (TSpring.make (vertex w x) pe (vertex w y))) (Edge.target e)
+        ) (Graph.edges g)
+    in
+    w
+
+  (** Build the physical model of a term. *)
+  let make t =
+    update empty t
+end
+module P = Physics
+
+let graphics_init () =
+  Graphics.open_graph "";
+  Graphics.auto_synchronize true
+
+let graphics_plot vg =
+  let border = 10 in
+  let px_of_p p =
+    let width, height = Graphics.size_x (), Graphics.size_y () in
+    let width = width - 2 * border in
+    let height = height - 2 * border in
+    let x = p.C.re *. float width in
+    let y = p.C.im *. float height in
+    int_of_float x + border, int_of_float y + border
   in
-  plot ();
+  Graphics.clear_graph ();
+  List.iter
+    (function
+     | Vertex p ->
+        let x,y = px_of_p p in
+        Graphics.set_color Graphics.black;
+        Graphics.fill_circle x y 5
+     | Edge p ->
+        let x,y = px_of_p p in
+        Graphics.set_color Graphics.red;
+        Graphics.fill_circle x y 5
+     | Wire (p1,p2) ->
+        Graphics.set_color Graphics.black;
+        let x,y = px_of_p p1 in
+        Graphics.moveto x y;
+        let x,y = px_of_p p2 in
+        Graphics.lineto x y
+    ) vg;
+  Graphics.synchronize ()
+
+let graphics t =
+  graphics_init ();
+  let w = P.make t in
+  let plot () =
+    graphics_plot (P.plot w)
+  in
   while not (Graphics.key_pressed ()) (* && P.energy w >= 0.0001 *) do
-    P.step w 0.1;
     plot ();
+    P.step w 0.1;
     Unix.sleepf 0.01
-  done
+  done;

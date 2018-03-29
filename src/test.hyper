@@ -12,5 +12,5 @@ normalize (m*2);(m*1);m
 ops
 rules
 # plot m*2;(m*1);m
-plot m;d;(d*1);m*1
-#plot m;d
+plot m;d;(d*1);m*1;m
+# plot m;d;d*1
