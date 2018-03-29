@@ -273,7 +273,8 @@ module Graph = struct
 
   (** Disjoint union. *)
   let coprod g1 g2 =
-    let i1 = copy g1 in
+    let i1 = Map.id g1 in
+    (* let i1 = copy g1 in *)
     let i2 = copy g2 in
     (* let i1,i2 = if disjoint g1 g2 then Map.id g1, Map.id g2 else copy g1, copy g2 in *)
     let g1 = Map.target i1 in
@@ -634,6 +635,7 @@ module Rule = struct
       let i = List.hd m in
       let dl = (Term.source l)@(Term.target l) in
       let g = Term.graph t in
+      let g0 = g in
       (* Remove matched part. *)
       let g =
         let rv = List.sub (Graph.vertices (Term.graph l)) dl in
@@ -642,6 +644,7 @@ module Rule = struct
         let re = List.map (Graph.Map.appe i) re in
         Graph.remove g rv re
       in
+      let j = { (Graph.Map.id g) with source = g0 } in
       (* Add new part. *)
       let i, g =
         let dr = (Term.source r)@(Term.target r) in
@@ -665,7 +668,8 @@ module Rule = struct
       let target = Term.target t in
       let source = List.map (Graph.Map.appv i) source in
       let target = List.map (Graph.Map.appv i) target in
-      Some { Term.graph; source; target }
+      let t' = { Term.graph; source; target } in
+      Some t'
 end
 
 (** Presentations. *)
