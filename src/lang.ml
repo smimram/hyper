@@ -6,7 +6,8 @@ open Stdlib
 open Common
 
 module T = Graph.Term
-module P = Graph.Term.Pres
+module P = Graph.Pres
+module Rule = Graph.Rule
 
 let pres = ref P.empty
 
@@ -64,7 +65,7 @@ let command cmd  =
        try
          List.iter
            (fun r ->
-             match T.Rule.rewrite r !t with
+             match Rule.rewrite r !t with
              | Some t' ->
                 t := t';
                 print (T.to_string !t ^ "\n\n");
@@ -76,7 +77,9 @@ let command cmd  =
        | Exit -> ()
      done
   | ["ops"] -> print (String.concat " " (List.map Graph.Edge.label (Graph.Signature.edges (P.signature !pres))) ^ "\n")
-  | ["rules"] -> print (String.concat " " (List.map T.Rule.label (P.rules !pres)) ^ "\n")
+  | ["rules"] -> print (String.concat " " (List.map Rule.label (P.rules !pres)) ^ "\n")
+  | ["plot";e] -> Plot.graphics (expr e)
+  | ["sleep";n] -> Unix.sleep (int_of_string n)
   | ["help"] -> print ("You're on your own, sorry.\n")
   | cmd::_ -> error ("Unknown command: " ^ cmd)
   | [] -> ()

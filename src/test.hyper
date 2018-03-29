@@ -11,3 +11,5 @@ normalize (m+2)*(m+1)*m
 
 ops
 rules
+plot (m+1)*m
+sleep 1

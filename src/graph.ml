@@ -306,6 +306,22 @@ module Graph = struct
           ) (Edge.source e) (Edge.target e)
       ) (edges g);
     !p
+
+  (** Horizontal order on vertices. *)
+  let horderv g =
+    let p = ref (Poset.create (vertices g)) in
+    List.iter
+      (fun e ->
+        let rec aux = function
+          | x::y::l ->
+             p := Poset.add !p x y;
+             aux (y::l)
+          | _ -> ()
+        in
+        aux (Edge.source e);
+        aux (Edge.target e)
+      ) (edges g);
+    !p
 end
 
 (** Signatures. *)
@@ -372,8 +388,6 @@ module Term = struct
       target : vertex list (** target *)
     }
 
-  type term = t
-
   (** Source. *)
   let source t = t.source
 
@@ -422,7 +436,23 @@ module Term = struct
     let target f =
       make (Graph.Map.target f.graph) f.source f.target
   end
-  *)
+   *)
+
+  let vorderv f =
+    Graph.vorderv (graph f)
+
+  let horderv f =
+    let p = Graph.horderv (graph f) in
+    let p = ref p in
+    let rec aux = function
+      | x::y::l ->
+         p := Poset.add !p x y;
+         aux (y::l)
+      | _ -> ()
+    in
+    aux (source f);
+    aux (target f);
+    !p
 
   (** Identity. *)
   let id u =
@@ -569,116 +599,117 @@ module Term = struct
          ()
     done;
     !ans
-
-  (** Rewriting rules. *)
-  module Rule = struct
-    (** A rewriting rule. *)
-    type t =
-      {
-        label : string;
-        source : term;
-        target : term
-      }
-
-    (** Create a rewriting rule. *)
-    let make label l r =
-      assert (parallel l r);
-      { label; source = l; target = r}
-
-    (** Apply a rewriting rule. *)
-    let rewrite r t =
-      let l = r.source in
-      let r = r.target in
-      let m = matchings l t in
-      if m = [] then None else
-        let i = List.hd m in
-        let dl = (source l)@(target l) in
-        let g = graph t in
-        (* Remove matched part. *)
-        let g =
-          let rv = List.sub (Graph.vertices (graph l)) dl in
-          let re = Graph.edges (graph l) in
-          let rv = List.map (Graph.Map.appv i) rv in
-          let re = List.map (Graph.Map.appe i) re in
-          Graph.remove g rv re
-        in
-        (* Add new part. *)
-        let i, g =
-          let dr = (source r)@(target r) in
-          let i1,i2 = Graph.coprod g (graph r) in
-          let g = Graph.Map.target i1 in
-          (* Printf.printf "coprod:\n%s\n\n" (Graph.to_string g); *)
-          let s =
-            List.map2
-              (fun x x' ->
-                let x = Graph.Map.appv i x in
-                let x = Graph.Map.appv i1 x in
-                let x' = Graph.Map.appv i2 x' in
-                x', x
-              ) dl dr
-          in
-          let s x = try List.assoc x s with Not_found -> x in
-          i1, Graph.Map.target (Graph.quotient g s)
-        in
-        let graph = g in
-        let source = source t in
-        let target = target t in
-        let source = List.map (Graph.Map.appv i) source in
-        let target = List.map (Graph.Map.appv i) target in
-        Some { graph; source; target }
-
-    let label r = r.label
-
-    let source r = r.source
-
-    let target r = r.target
-  end
-
-  (** Presentations. *)
-  module Pres = struct
-    (** A presentation. *)
-    type t =
-      {
-        signature : Signature.t;
-        rules : Rule.t list
-      }
-
-    let signature p = p.signature
-
-    let rules p = p.rules
-
-    (** Empty presentation. *)
-    let empty = { signature = Signature.empty; rules = [] }
-
-    (** Vertex. *)
-    let getv p name =
-      List.find (fun x -> Vertex.label x = name) (Signature.vertices p.signature)
-
-    (** Edge. *)
-    let gete p name =
-      List.find (fun e -> Edge.label e = name) (Signature.edges p.signature)
-
-    (** Relation. *)
-    let getr p name =
-      List.find (fun r -> Rule.label r = name) (rules p)
-
-    (** Add a vertex. *)
-    let addv p name =
-      let v = Vertex.make name in
-      let signature = Signature.addv p.signature v in
-      { p with signature }
-
-    (** Add an edge. *)
-    let adde p name s t =
-      let s = List.map (getv p) s in
-      let t = List.map (getv p) t in
-      let e = Edge.make name s t in
-      let signature = Signature.adde p.signature e in
-      { p with signature }
-
-    (** Add a relation. *)
-    let addr p name l r =
-      let r = Rule.make name l r in
-      { p with rules = r::p.rules }
-  end
 end
+
+(** Rewriting rules. *)
+module Rule = struct
+  (** A rewriting rule. *)
+  type t =
+    {
+      label : string;
+      source : Term.t;
+      target : Term.t
+    }
+
+  let label r = r.label
+
+  let source r = r.source
+
+  let target r = r.target
+
+  (** Create a rewriting rule. *)
+  let make label l r =
+    assert (Term.parallel l r);
+    { label; source = l; target = r}
+
+  (** Apply a rewriting rule. *)
+  let rewrite r t =
+    let l = r.source in
+    let r = r.target in
+    let m = Term.matchings l t in
+    if m = [] then None else
+      let i = List.hd m in
+      let dl = (Term.source l)@(Term.target l) in
+      let g = Term.graph t in
+      (* Remove matched part. *)
+      let g =
+        let rv = List.sub (Graph.vertices (Term.graph l)) dl in
+        let re = Graph.edges (Term.graph l) in
+        let rv = List.map (Graph.Map.appv i) rv in
+        let re = List.map (Graph.Map.appe i) re in
+        Graph.remove g rv re
+      in
+      (* Add new part. *)
+      let i, g =
+        let dr = (Term.source r)@(Term.target r) in
+        let i1,i2 = Graph.coprod g (Term.graph r) in
+        let g = Graph.Map.target i1 in
+        (* Printf.printf "coprod:\n%s\n\n" (Graph.to_string g); *)
+        let s =
+          List.map2
+            (fun x x' ->
+              let x = Graph.Map.appv i x in
+              let x = Graph.Map.appv i1 x in
+              let x' = Graph.Map.appv i2 x' in
+              x', x
+            ) dl dr
+        in
+        let s x = try List.assoc x s with Not_found -> x in
+        i1, Graph.Map.target (Graph.quotient g s)
+      in
+      let graph = g in
+      let source = Term.source t in
+      let target = Term.target t in
+      let source = List.map (Graph.Map.appv i) source in
+      let target = List.map (Graph.Map.appv i) target in
+      Some { Term. graph; source; target }
+end
+
+(** Presentations. *)
+module Pres = struct
+  (** A presentation. *)
+  type t =
+    {
+      signature : Signature.t;
+      rules : Rule.t list
+    }
+
+  let signature p = p.signature
+
+  let rules p = p.rules
+
+  (** Empty presentation. *)
+  let empty = { signature = Signature.empty; rules = [] }
+
+  (** Vertex. *)
+  let getv p name =
+    List.find (fun x -> Vertex.label x = name) (Signature.vertices p.signature)
+
+  (** Edge. *)
+  let gete p name =
+    List.find (fun e -> Edge.label e = name) (Signature.edges p.signature)
+
+  (** Relation. *)
+  let getr p name =
+    List.find (fun r -> Rule.label r = name) (rules p)
+
+  (** Add a vertex. *)
+  let addv p name =
+    let v = Vertex.make name in
+    let signature = Signature.addv p.signature v in
+    { p with signature }
+
+  (** Add an edge. *)
+  let adde p name s t =
+    let s = List.map (getv p) s in
+    let t = List.map (getv p) t in
+    let e = Edge.make name s t in
+    let signature = Signature.adde p.signature e in
+    { p with signature }
+
+  (** Add a relation. *)
+  let addr p name l r =
+    let r = Rule.make name l r in
+    { p with rules = r::p.rules }
+end
+

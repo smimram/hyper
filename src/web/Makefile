@@ -1,6 +1,6 @@
 SOURCES = web.ml
 RESULT = hyper
-PACKS = js_of_ocaml,js_of_ocaml.syntax
+PACKS = unix,graphics,js_of_ocaml,js_of_ocaml.syntax
 CMO = $(filter-out ../hyper.cmo, $(wildcard ../*.cmo))
 
 all: hyper

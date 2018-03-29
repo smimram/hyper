@@ -7,7 +7,7 @@ module V = Vertex
 module E = Edge
 module S = Signature
 module T = Term
-module R = Term.Rule
+module R = Rule
 
 (*
 let () =
