@@ -32,6 +32,7 @@ let expr =
       | [< >] -> fun t -> t
   and atom = parser
       | [< 'Genlex.Int n >] -> T.id (List.map (P.getv !pres) (kinds_of_int n))
+      | [< 'Genlex.Ident "X" >] -> T.transposition (P.getv !pres pro_kind) (P.getv !pres pro_kind)
       | [< 'Genlex.Ident s >] -> T.generator (P.gete !pres s)
       | [< 'Genlex.Kwd "("; t = comp; 'Genlex.Kwd ")" >] -> t
   in
@@ -60,13 +61,13 @@ let command cmd  =
   | ["plot";e] -> Plot.graphics_term (expr e)
   | ["normalize";e] ->
      let t = expr e in
-     print (T.to_string t ^ "\n\n");
      Enum.iter (fun t -> print (T.to_string t ^ "\n\n")) (P.normalize !pres t)
   | ["plotnormalize";e] -> Plot.graphics_terms (P.normalize !pres (expr e))
   | ["ops"] -> print (String.concat " " (List.map Graph.Edge.label (Graph.Signature.edges (P.signature !pres))) ^ "\n")
   | ["rules"] -> print (String.concat " " (List.map Rule.label (P.rules !pres)) ^ "\n")
   | ["sleep";n] -> Unix.sleep (int_of_string n)
   | ["help"] -> print ("You're on your own, sorry.\n")
+  | cmd::_ when cmd.[0] = '#' -> ()
   | cmd::_ -> error ("Unknown command: " ^ cmd)
   | [] -> ()
 

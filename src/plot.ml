@@ -63,18 +63,22 @@ module Physics = struct
 
     let make ?(fixed=false) ?p e : t =
       let p = Option.default { C.re = Random.float 1.; im = Random.float 1. } p in
+      let r () = Random.float 0.2 -. 0.1 in
       {
         element = e;
         m = 1.;
         fixed;
         p;
-        v = { re = Random.float 2. -. 1.; im = Random.float 2. -. 1. };
-        a = { re = Random.float 2. -. 1.; im = Random.float 2. -. 1. }
+        v = { re = r (); im = r () };
+        a = { re = r (); im = r () }
       }
 
     let vertex ?fixed ?p v = make ?fixed ?p (`Vertex v)
 
     let edge ?p e = make ?p (`Edge e)
+
+    let copy p =
+      { p with m = p.m}
   end
 
   (** A spring. *)
@@ -93,6 +97,8 @@ module Physics = struct
     let source (s:t) = s.source
 
     let target (s:t) = s.target
+
+    let copy s = { s with source = s.source }
   end
 
   (** Torsion springs. *)
@@ -117,7 +123,7 @@ module Physics = struct
     }
 
   (** Empty world. *)
-  let empty = { points = []; springs = []; tsprings = [] }
+  let empty () = { points = []; springs = []; tsprings = [] }
 
   (** Add a point. *)
   let add_point w p = w.points <- p::w.points
@@ -301,7 +307,7 @@ module Physics = struct
   (* TODO: use a morphism instead of the identity *)
   let update w0 t =
     let g = Term.graph t in
-    let w = empty in
+    let w = empty () in
     (* Source. *)
     let () =
       let source = Term.source t in
@@ -338,10 +344,15 @@ module Physics = struct
     let () =
       List.iter
         (fun v ->
-          if has_vertex w v then Printf.printf "reuse vertex: %s\n%!" (Vertex.to_string v);
+          (* if has_vertex w0 v then Printf.printf "reuse vertex: %s\n%!" (Vertex.to_string v); *)
           (* Try to reuse previous position. *)
-          let p = try Some (vertex w0 v).p with Not_found -> None in
-          add_point w (Point.vertex ?p v)
+          let v =
+            try
+              Point.copy (vertex w0 v)
+            with
+            | Not_found -> Point.vertex v
+          in
+          add_point w v
         ) (Listq.sub (Graph.vertices g) ((Term.source t)@(Term.target t)))
     in 
     (* Edges. *)
@@ -349,7 +360,7 @@ module Physics = struct
       List.iter
         (fun e ->
           (* Point *)
-          if has_edge w e then Printf.printf "reuse edge: %s\n%!" (Edge.to_string e);
+          (* if has_edge w0 e then Printf.printf "reuse edge: %s\n%!" (Edge.to_string e); *)
           let p = try Some (edge w0 e).p with Not_found -> None in
           let pe = Point.edge ?p e in
           add_point w pe;
@@ -374,7 +385,7 @@ module Physics = struct
 
   (** Build the physical model of a term. *)
   let make t =
-    update empty t
+    update (empty ()) t
 end
 module P = Physics
 
@@ -426,18 +437,27 @@ let graphics_term t =
 
 let graphics_terms t =
   graphics_init ();
-  let w = ref P.empty in
+  let w = ref (P.empty ()) in
   let plot () = graphics_plot (P.plot !w) in
   try
     while true do
       let t = Enum.get t in
       Printf.printf "graphics:\n%s\n%!" (Term.to_string t);
       w := P.update !w t;
+      (* plot (); Unix.sleep 1; *)
       while not (Graphics.key_pressed ()) && P.energy !w >= 0.001 do
         plot ();
         P.step !w 0.1;
         Unix.sleepf 0.01
-      done
+      done;
+      if Graphics.key_pressed () then ignore (Graphics.read_key ());
+      (* Unix.sleepf 1. *)
     done
   with
-  | Enum.End -> ()
+  | Enum.End ->
+     while not (Graphics.key_pressed ()) do
+        plot ();
+        P.step !w 0.1;
+        Unix.sleepf 0.01
+      done
+

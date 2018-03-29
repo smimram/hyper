@@ -53,15 +53,32 @@ module Edge = struct
   (** Equality. *)
   let eq e e' = e == e'
 
-  let to_string e = label (label e)
+  (* let to_string e = label (label e) *)
+
+  let to_string =
+    let uid = UID.Named.create () in
+    fun e ->
+    let s = label (label e) in
+    let n = UID.Named.get uid s e in
+    s^"@"^string_of_int n
 
   (** Map a function on vertices. *)
   let map f e =
-    {
-      label = e.label;
-      source = List.map f e.source;
-      target = List.map f e.target
-    }
+    let changed = ref false in
+    let f x =
+      let y = f x in
+      if y != x then changed := true;
+      y
+    in
+    let e' =
+      {
+        label = e.label;
+        source = List.map f e.source;
+        target = List.map f e.target
+      }
+    in
+    (* Try to physically preserve the edge. *)
+    if !changed then e' else e
 end
 
 (** Hypergraphs. *)
@@ -403,8 +420,6 @@ module Term = struct
 
   (** String representation. *)
   let to_string f =
-    let vertex v = Vertex.to_string v in
-    let edge e = Edge.to_string e in
     let vertices vv = Vertex.list_to_string vv in
     let src = vertices (source f) in
     let tgt = vertices (target f) in
@@ -467,6 +482,15 @@ module Term = struct
       target = u;
     }
 
+  let transposition a b =
+    let a = Vertex.make a in
+    let b = Vertex.make b in
+    {
+      graph = Graph.discrete [a;b];
+      source = [a;b];
+      target = [b;a]
+    }
+
   (** Generating term. *)
   let generator e =
     let source = List.map Vertex.make (Edge.source e) in
@@ -525,6 +549,7 @@ module Term = struct
     let return i =
       (* Check for convexity *)
       let is_convex i =
+        (* TODO: use t'...... *)
         let t' = Graph.Map.target i in
         let p = Graph.vorderv (graph t) in
         List.for_all_pairs (fun x y -> not (Poset.lt p y x)) (source t) (target t)
@@ -635,7 +660,6 @@ module Rule = struct
       let i = List.hd m in
       let dl = (Term.source l)@(Term.target l) in
       let g = Term.graph t in
-      let g0 = g in
       (* Remove matched part. *)
       let g =
         let rv = List.sub (Graph.vertices (Term.graph l)) dl in
@@ -644,7 +668,6 @@ module Rule = struct
         let re = List.map (Graph.Map.appe i) re in
         Graph.remove g rv re
       in
-      let j = { (Graph.Map.id g) with source = g0 } in
       (* Add new part. *)
       let i, g =
         let dr = (Term.source r)@(Term.target r) in
@@ -751,4 +774,3 @@ module Pres = struct
           ans ()
       )
 end
-
