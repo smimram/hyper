@@ -2,6 +2,10 @@
 
 [Hypergraph](https://en.wikipedia.org/wiki/Hypergraph) [rewriting](https://en.wikipedia.org/wiki/Rewriting) in order to manipulate presentations of [PROPs](https://en.wikipedia.org/wiki/PRO_(category_theory)).
 
+## Demo
+
+You can see it [running live here](https://smimram.github.io/hyper/).
+
 ## Example session
 
 Let's define the theory for [monoids](https://en.wikipedia.org/wiki/Monoid). We first need to add in generators for multiplication and unit
