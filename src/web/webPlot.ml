@@ -1,3 +1,4 @@
+open Common
 open Plot
 
 module Html = Dom_html
@@ -17,14 +18,14 @@ let plot canvas vg =
   let ctx = canvas##getContext (Html._2d_) in
   let border = 10. in
   let px_of_p p =
-    let width, height = canvas##width, canvas##height in
+    let width, height = canvas##.width, canvas##.height in
     let width = float width -. 2. *. border in
     let height = float height -. 2. *. border in
     let x = p.C.re *. width in
     let y = p.C.im *. height in
     x +. border, y +. border
   in
-  ctx##clearRect (0., 0., float canvas##width, float canvas##height);
+  ctx##clearRect 0. 0. (float canvas##.width) (float canvas##.height);
   List.iter
     (function
      | Vertex p ->
@@ -38,24 +39,28 @@ let plot canvas vg =
      (* Graphics.fill_circle x y 5 *)
         ()
      | Wire (p1,p2) ->
-        ctx##strokeStyle <- Js.string black;
-        (* ctx##lineWidth <- 2.; *)
-        ctx##beginPath ();
+        ctx##.strokeStyle := Js.string black;
+        ctx##beginPath;
         let x,y = px_of_p p1 in
-        ctx##moveTo (x,y);
+        ctx##moveTo x y;
         let x,y = px_of_p p2 in
-        ctx##lineTo (x,y);
-        ctx##stroke ();
+        ctx##lineTo x y;
+        ctx##stroke;
     ) vg;
+  (* print "plot"; *)
   Graphics.synchronize ()
+
+(* let (>>=) = Lwt.bind *)
 
 let plot_term canvas t =
   let w = P.make t in
   let plot () =
     plot canvas (P.plot w)
   in
-  while true do
+  let rec aux () =
+    (* Lwt_js.sleep 0.5 >>= fun () -> *)
     plot ();
-    P.step w 0.1
-    (* Unix.sleepf 0.01 *)
-  done
+    P.step w 0.1;
+    aux ()
+  in
+  aux ()

@@ -6,8 +6,8 @@ let doc = Html.document
 let button txt action =
   let button_type = Js.string "button" in
   let b = Html.createInput ~_type:button_type doc in
-  b##value <- Js.string txt;
-  b##onclick <- Dom_html.handler (fun _ -> action (); Js._true);
+  b##.value := Js.string txt;
+  b##.onclick := Dom_html.handler (fun _ -> action (); Js._true);
   b
 
 let debug s =
@@ -24,40 +24,40 @@ let run _ =
   in
 
   (* let output = Html.createDiv doc in *)
-  (* output##id <- Js.string "output"; *)
-  (* output##style##whiteSpace <- Js.string "pre"; *)
+  (* output##id := Js.string "output"; *)
+  (* output##style##whiteSpace := Js.string "pre"; *)
   (* Dom.appendChild top output; *)
 
   (* Canvas. *)
   let canvas = Html.createCanvas doc in
-  canvas##id <- Js.string "graph";
-  canvas##width <- 600;
-  canvas##height <- 300;
+  canvas##.id := Js.string "graph";
+  canvas##.width := 600;
+  canvas##.height := 300;
   Dom.appendChild top canvas;
   Lang.plot_term := (WebPlot.plot_term canvas);
 
   (* Text box. *)
   let textbox = Html.createTextarea doc in
-  textbox##id <- Js.string "input";
-  textbox##cols <- 80;
-  textbox##rows <- 25;
-  (* textbox##value <- Js.string "# "; *)
+  textbox##.id := Js.string "input";
+  textbox##.cols := 80;
+  textbox##.rows := 25;
+  (* textbox##value := Js.string "# "; *)
   Dom.appendChild top textbox;
   Dom.appendChild top (Html.createBr doc);
-  textbox##focus();
-  textbox##select();
+  textbox##focus;
+  textbox##select;
 
   (* Current offset in textbox. *)
   let tb_off = ref 0 in
   let print s =
-    let s = Js.to_string textbox##value ^ s in
+    let s = Js.to_string textbox##.value ^ s in
     tb_off := String.length s;
-    textbox##value <- Js.string s;
+    textbox##.value := Js.string s;
     (* Scroll down. *)
     Js.Unsafe.set textbox (Js.string "scrollTop") (Js.Unsafe.get textbox (Js.string "scrollHeight"))
   in
   let read () =
-    let s = Js.to_string textbox##value in
+    let s = Js.to_string textbox##.value in
     let cmd = String.sub s !tb_off (String.length s - !tb_off) in
     tb_off := String.length s;
     cmd
@@ -85,16 +85,22 @@ let run _ =
           !s
         in
         loop s;
-        textbox##focus();
-        doc##documentElement##scrollTop <- doc##body##scrollHeight;
+        textbox##focus;
+        doc##.documentElement##.scrollTop := doc##.body##.scrollHeight;
         print "# ")
   in
-  b##id <- Js.string "send";
+  b##.id := Js.string "send";
   Dom.appendChild top b;
 
   ignore (Js.Unsafe.eval_string "init();");
 
+  loop "help";
+  loop "op m : 2 -> 1";
+  loop "ops";
+  loop "plot (m*1);m";
+
   Js._false
 
 let () =
-  Html.window##onload <- Html.handler run
+  Random.self_init ();
+  Html.window##.onload := Html.handler run
