@@ -549,10 +549,9 @@ module Term = struct
     let return i =
       (* Check for convexity *)
       let is_convex i =
-        (* TODO: use t'...... *)
         let t' = Graph.Map.target i in
-        let p = Graph.vorderv (graph t) in
-        List.for_all_pairs (fun x y -> not (Poset.lt p y x)) (source t) (target t)
+        let p = Graph.vorderv t' in
+        List.for_all_pairs (fun x y -> not (Poset.lt p (Graph.Map.appv i y) (Graph.Map.appv i x))) (source t) (target t)
         (* List.iter_pairs (fun x y -> if Poset.lt p y x then Printf.printf "LOOP: %s < %s\n\n%!" (Vertex.to_string y) (Vertex.to_string x)) (source t) (target t); true *)
       in
       if not convex || is_convex i then
