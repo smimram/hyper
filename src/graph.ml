@@ -547,17 +547,14 @@ module Term = struct
     let g' = graph t' in
     let queue = Queue.create () in
     Queue.push ([], Graph.Map.empty g g') queue;
+    (* Check for convexity *)
+    let is_convex i =
+      let t' = Graph.Map.target i in
+      let p = Graph.vorderv t' in
+      List.for_all_pairs (fun x y -> not (Poset.lt p (Graph.Map.appv i y) (Graph.Map.appv i x))) (source t) (target t)
+      (* List.iter_pairs (fun x y -> if Poset.lt p y x then Printf.printf "LOOP: %s < %s\n\n%!" (Vertex.to_string y) (Vertex.to_string x)) (source t) (target t); true *)
+    in
     let rec aux () =
-      let return i =
-        (* Check for convexity *)
-        let is_convex i =
-          let t' = Graph.Map.target i in
-          let p = Graph.vorderv t' in
-          List.for_all_pairs (fun x y -> not (Poset.lt p (Graph.Map.appv i y) (Graph.Map.appv i x))) (source t) (target t)
-                             (* List.iter_pairs (fun x y -> if Poset.lt p y x then Printf.printf "LOOP: %s < %s\n\n%!" (Vertex.to_string y) (Vertex.to_string x)) (source t) (target t); true *)
-        in
-        if not convex || is_convex i then i else aux ()
-      in
       if Queue.is_empty queue then raise Enum.End;
       let l,i = Queue.pop queue in
       match l with
@@ -571,13 +568,13 @@ module Term = struct
            List.iter (fun e' -> Queue.push ([`E(e,e')],i) queue) (Graph.edges g');
            aux ()
          else
-           return i
+           if not convex || is_convex i then i else aux ()
       | `V(x,x')::l ->
          (* Printf.printf "V: %s = %s\n" (Vertex.to_string x) (Vertex.to_string x'); *)
          assert (Graph.hasv g x);
          assert (Graph.hasv g' x');
-         if Vertex.label x != Vertex.label x' then raise Exit;
-         if Graph.Map.hasv i x then
+         if Vertex.label x != Vertex.label x' then aux ()
+         else if Graph.Map.hasv i x then
            if Graph.Map.appv i x != x' then
              aux ()
            else
@@ -610,8 +607,8 @@ module Term = struct
       | `E(e,e')::l ->
          assert (Graph.hase g e);
          assert (Graph.hase g' e');
-         if Edge.label e != Edge.label e' then raise Exit;
-         if Graph.Map.hase i e then
+         if Edge.label e != Edge.label e' then aux ()
+         else if Graph.Map.hase i e then
            if Graph.Map.appe i e != e' then
              aux ()
            else
