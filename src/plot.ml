@@ -1,5 +1,7 @@
 (** Graph plotting library. *)
 
+(* TODO: remove torsion springs which are not used in the end *)
+
 open Stdlib
 
 open Graph
@@ -15,6 +17,9 @@ module Complex = struct
 
   let map f c =
     { re = f c.re; im = f c.im }
+
+  let to_string c =
+    Printf.sprintf "%f+i%f" c.re c.im
 end
 module C = Complex
 
@@ -30,9 +35,9 @@ module Physics = struct
   (** Damping factor. *)
   let damping = ref 0.95
   (** Charge of a particle. *)
-  let charge = ref 0.01
+  let charge = ref 0.05
   (** Length of a spring. *)
-  let spring_length = ref 0.2
+  let spring_length = ref 0.1
   (** Stiffness of a spring. *)
   let spring_k = ref 1.
   (** Angle of a torsion spring. *)
@@ -62,7 +67,8 @@ module Physics = struct
     type t = point
 
     let make ?(fixed=false) ?p e : t =
-      let p = Option.default { C.re = Random.float 1.; im = Random.float 1. } p in
+      (* let p = Option.default { C.re = Random.float 1.; im = Random.float 1. } p in *)
+      let p = Option.default { C.re = 0.5; im = Random.float 0.5 } p in
       let r () = Random.float 0.2 -. 0.1 in
       {
         element = e;
@@ -85,14 +91,15 @@ module Physics = struct
   type spring =
     {
       source : point;
-      target : point
+      target : point;
+      d : C.t (* direction of the spring *)
     }
 
   (** Springs. *)
   module Spring = struct
     type t = spring
 
-    let make source target : t = { source; target }
+    let make ?(d=(C.cmul !spring_length C.one)) source target : t = { source; target; d }
 
     let source (s:t) = s.source
 
@@ -196,7 +203,8 @@ module Physics = struct
     List.iter
       (fun s ->
         (* Default direction for spring. *)
-        let r0 = C.cmul !spring_length C.one in
+        (* let r0 = C.cmul !spring_length C.one in *)
+        let r0 = s.d in
         let p1 = s.source in
         let p2 = s.target in
         let r = C.sub p2.p p1.p in
@@ -277,11 +285,11 @@ module Physics = struct
   (** Perform a simulation step. *)
   let step w dt =
     clear_a w;
-    (* coulomb w; *)
+    coulomb w;
     (* boundary w; *)
     (* hooke w; *)
     dspring w;
-    tspring w;
+    (* tspring w; *)
     update_v w dt;
     update_p w dt
 
@@ -365,6 +373,7 @@ module Physics = struct
           let pe = Point.edge ?p e in
           add_point w pe;
           (* Springs *)
+          (*
           let ls = List.map (fun v -> vertex w v, pe) (Edge.source e) in
           let lt = List.map (fun v -> pe, vertex w v) (Edge.target e) in
           List.iter
@@ -372,6 +381,25 @@ module Physics = struct
               let s = Spring.make p1 p2 in
               add_spring w s
             ) (ls@lt);
+           *)
+          let n = float (List.length (Edge.source e) - 1) in
+          List.iteri
+            (fun i v ->
+              let d = C.cmul !spring_length C.one in
+              let i = float i -. n /. 2. in
+              let d = C.add d { re = 0.; im = !spring_length *. i } in
+              let v = vertex w v in
+              add_spring w (Spring.make ~d v pe)
+            ) (Edge.source e);
+          let n = float (List.length (Edge.target e) - 1) in
+          List.iteri
+            (fun i v ->
+              let d = C.cmul !spring_length C.one in
+              let i = float i -. n /. 2. in
+              let d = C.add d { re = 0.; im = !spring_length *. (-. i) } in
+              let v = vertex w v in
+              add_spring w (Spring.make ~d pe v)
+            ) (Edge.target e);
           (* Torsion springs *)
           let rec iter f = function
             | x::y::l -> f x y; iter f (y::l)
@@ -456,8 +484,7 @@ let graphics_terms t =
   with
   | Enum.End ->
      while not (Graphics.key_pressed ()) do
-        plot ();
-        P.step !w 0.1;
-        Unix.sleepf 0.01
-      done
-
+       plot ();
+       P.step !w 0.1;
+       Unix.sleepf 0.01
+     done

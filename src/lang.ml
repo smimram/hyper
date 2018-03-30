@@ -16,6 +16,9 @@ let pro_kind = "|"
 let () = pres := P.addv !pres pro_kind
 let kinds_of_int n = List.init n (fun _ -> pro_kind)
 
+let plot_term = ref Plot.graphics_term
+let plot_terms = ref Plot.graphics_terms
+
 let expr =
   let lexer = Genlex.make_lexer [";";"*";"(";")"] in
   fun s ->
@@ -58,11 +61,11 @@ let command cmd  =
   | ["show";e] ->
      let t = expr e in
      print (T.to_string t ^ "\n")
-  | ["plot";e] -> Plot.graphics_term (expr e)
+  | ["plot";e] -> !plot_term (expr e)
   | ["normalize";e] ->
      let t = expr e in
      Enum.iter (fun t -> print (T.to_string t ^ "\n\n")) (P.normalize !pres t)
-  | ["plotnormalize";e] -> Plot.graphics_terms (P.normalize !pres (expr e))
+  | ["plotnormalize";e] -> !plot_terms (P.normalize !pres (expr e))
   | ["ops"] -> print (String.concat " " (List.map Graph.Edge.label (Graph.Signature.edges (P.signature !pres))) ^ "\n")
   | ["rules"] -> print (String.concat " " (List.map Rule.label (P.rules !pres)) ^ "\n")
   | ["sleep";n] -> Unix.sleep (int_of_string n)

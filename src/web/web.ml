@@ -28,6 +28,15 @@ let run _ =
   (* output##style##whiteSpace <- Js.string "pre"; *)
   (* Dom.appendChild top output; *)
 
+  (* Canvas. *)
+  let canvas = Html.createCanvas doc in
+  canvas##id <- Js.string "graph";
+  canvas##width <- 600;
+  canvas##height <- 300;
+  Dom.appendChild top canvas;
+  Lang.plot_term := (WebPlot.plot_term canvas);
+
+  (* Text box. *)
   let textbox = Html.createTextarea doc in
   textbox##id <- Js.string "input";
   textbox##cols <- 80;
