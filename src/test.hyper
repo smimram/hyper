@@ -1,26 +1,30 @@
+# op m : 2 -> 1
+# rule ass : m*1;m => 1*m;m
+# plotnormalize m*3;m*2;m*1;m
+
 op m : 2 -> 1
 op d : 1 -> 2
 rule frobl : 1*d;m*1 => m;d
 rule frobr : d*1;1*m => m;d
 plotnormalize d;d*1;d*2;2*m;1*m;m
 
-op m : 2 -> 1
-op u : 0 -> 1
-op d : 1 -> 2
-op e : 1 -> 0
+# op m : 2 -> 1
+# op u : 0 -> 1
+# op d : 1 -> 2
+# op e : 1 -> 0
 
-rule ass : (m*1);m => (1*m);m
-rule u-l : (u*1);m => 1
-rule u-r : (1*u);m => 1
-rule coass : d;(d*1) => d;(1*d)
-rule bialg : m;d => d*d;1*X*1;m*m
+# rule ass : (m*1);m => (1*m);m
+# rule u-l : (u*1);m => 1
+# rule u-r : (1*u);m => 1
+# rule coass : d;(d*1) => d;(1*d)
+# rule bialg : m;d => d*d;1*X*1;m*m
 
-# normalize (m*2);(m*1);m
-# plotnormalize (m*2);(m*1);m
+# # normalize (m*2);(m*1);m
+# # plotnormalize (m*2);(m*1);m
 
-ops
-rules
-# plot m
-# plot m*2;(m*1);m
-plotnormalize m;d;(d*1);m*1;m
-# plot m;d;d*1
+# ops
+# rules
+# # plot m
+# # plot m*2;(m*1);m
+# plotnormalize m;d;(d*1);m*1;m
+# # plot m;d;d*1

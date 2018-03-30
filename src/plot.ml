@@ -40,10 +40,6 @@ module Physics = struct
   let spring_length = ref 0.1
   (** Stiffness of a spring. *)
   let spring_k = ref 1.
-  (** Angle of a torsion spring. *)
-  let tspring_angle = ref (3.1416 /. 4.)
-  (** Stiffness of a torsion spring. *)
-  let tspring_k = ref 0.1
   (** Minimal energy in order to proceed with simulation. *)
   let min_energy = ref 0.001
 
@@ -110,37 +106,21 @@ module Physics = struct
     let copy s = { s with source = s.source }
   end
 
-  (** Torsion springs. *)
-  module TSpring = struct
-    (** A torsion spring tends to keep the angle s-m-t constant. *)
-    type t =
-      {
-        source : point;
-        middle : point;
-        target : point
-      }
-
-    let make source middle target = { source; middle; target }
-  end
-
   (** A physical world. *)
   type world =
     {
       mutable points : point list;
       mutable springs : spring list;
-      mutable tsprings : TSpring.t list;
     }
 
   (** Empty world. *)
-  let empty () = { points = []; springs = []; tsprings = [] }
+  let empty () = { points = []; springs = [] }
 
   (** Add a point. *)
   let add_point w p = w.points <- p::w.points
 
   (** Add a spring. *)
   let add_spring w s = w.springs <- s::w.springs
-
-  let add_tspring w s = w.tsprings <- s::w.tsprings
 
   (** Point associated to given vertex. *)
   let vertex w v =
@@ -215,21 +195,6 @@ module Physics = struct
         act (C.neg f) p1
       ) w.springs
 
-  (** Directed angular springs. *)
-  let tspring w =
-    List.iter
-      (fun s ->
-        let l1 = C.sub s.TSpring.source.p s.middle.p in
-        let l2 = C.sub s.target.p s.middle.p in
-        let l1 = C.normalize l1 in
-        let l2 = C.normalize l2 in
-        let a = C.div l2 l1 in
-        let a0 = C.polar 1. !tspring_angle in
-        let f = C.cmul !tspring_k (C.sub a0 a) in
-        act (C.mul l1 f) s.target;
-        act (C.mul l2 (C.neg f)) s.source
-      ) w.tsprings
-
   (** Repulse from boundary. *)
   let boundary w =
     List.iter
@@ -291,7 +256,6 @@ module Physics = struct
     (* boundary w; *)
     (* hooke w; *)
     dspring w;
-    (* tspring w; *)
     update_v w dt;
     update_p w dt
 
@@ -402,13 +366,6 @@ module Physics = struct
               let v = vertex w v in
               add_spring w (Spring.make ~d pe v)
             ) (Edge.target e);
-          (* Torsion springs *)
-          let rec iter f = function
-            | x::y::l -> f x y; iter f (y::l)
-            | _ -> ()
-          in
-          iter (fun x y -> add_tspring w (TSpring.make (vertex w x) pe (vertex w y))) (Edge.source e);
-          iter (fun y x -> add_tspring w (TSpring.make (vertex w x) pe (vertex w y))) (Edge.target e)
         ) (Graph.edges g)
     in
     w
