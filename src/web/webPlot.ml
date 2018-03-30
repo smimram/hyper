@@ -50,12 +50,22 @@ let plot canvas vg =
 
 let (>>=) = Lwt.bind
 
+let loopers = ref []
+let stop () =
+  List.iter (fun l -> l := false) !loopers;
+  loopers := []
+let add_loop l =
+  loopers := l :: !loopers
+
 let plot_term canvas t =
   let w = P.make t in
   let plot () = plot canvas (P.plot w) in
+  stop ();
+  let loop = ref true in
+  add_loop loop;
   let rec aux () =
     Lwt_js.sleep 0.2 >>= fun () ->
-    if P.energy w >= !P.min_energy then
+    if !loop && P.energy w >= !P.min_energy then
       (
         plot ();
         P.step w 0.1
@@ -67,10 +77,13 @@ let plot_term canvas t =
 let plot_terms canvas t =
   let w = ref (P.empty ()) in
   let plot () = plot canvas (P.plot !w) in
+  stop ();
+  let loop = ref true in
+  add_loop loop;
   let rec aux () =
     Lwt_js.sleep 0.05 >>= fun () ->
     try
-    if P.energy !w >= !P.min_energy then
+    if !loop && P.energy !w >= !P.min_energy then
       (
         plot ();
         P.step !w 0.1

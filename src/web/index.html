@@ -23,7 +23,14 @@
     </script>
 
     <p>
-      <a href="https://github.com/smimram/hyper">Source code and some documentation</a>.
+      <a href="https://github.com/smimram/hyper">Source code and some documentation</a>. If you want to try something:
+      <pre>
+op m : 2 -> 1
+op d : 1 -> 2
+rule frobl : 1*d;m*1 => m;d
+rule frobr : d*1;1*m => m;d
+plotnormalize d;d*1;d*2;2*m;1*m;m
+      </pre>
     </p>
   </body>
 </html>

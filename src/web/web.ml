@@ -88,7 +88,7 @@ let run _ =
         in
         loop s;
         textbox##focus;
-        doc##.documentElement##.scrollTop := doc##.body##.scrollHeight;
+        (* doc##.documentElement##.scrollTop := doc##.body##.scrollHeight; *)
         print "# ")
   in
   b##.id := Js.string "send";
