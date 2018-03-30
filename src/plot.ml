@@ -286,33 +286,23 @@ module Physics = struct
     let () =
       let source = Term.source t in
       let n = List.length source in
-      if n = 1 then
-        let v = List.hd source in
-        let p = Point.vertex ~fixed:true ~p:{C.re=0.; im=0.5} v in
-        add_point w p
-      else
-        List.iteri
-          (fun i v ->
-            let y = float i /. (float (n-1)) in
-            let p = Point.vertex ~fixed:true ~p:{C.re=0.; im=y} v in
-            add_point w p
-          ) source
+      List.iteri
+        (fun i v ->
+          let y = if n = 1 then 0.5 else float i /. (float (n-1)) in
+          let p = Point.vertex ~fixed:true ~p:{C.re=0.; im=y} v in
+          add_point w p
+        ) source
     in
     (* Target. *)
     let () =
       let target = Term.target t in
       let n = List.length target in
-      if n = 1 then
-        let v = List.hd target in
-        let p = Point.vertex ~fixed:true ~p:{C.re=1.; im=0.5} v in
-        add_point w p
-      else
-        List.iteri
-          (fun i v ->
-            let y = float i /. (float (n-1)) in
-            let p = Point.vertex ~fixed:true ~p:{C.re=1.; im=y} v in
-            add_point w p
-          ) target
+      List.iteri
+        (fun i v ->
+          let y = if n = 1 then 0.5 else float i /. (float (n-1)) in
+          let p = Point.vertex ~fixed:true ~p:{C.re=1.; im=y} v in
+          add_point w p
+        ) target
     in
     (* Vertices. *)
     let () =
