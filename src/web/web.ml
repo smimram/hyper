@@ -35,6 +35,7 @@ let run _ =
   canvas##.height := 300;
   Dom.appendChild top canvas;
   Lang.plot_term := (WebPlot.plot_term canvas);
+  Lang.plot_terms := (WebPlot.plot_terms canvas);
 
   (* Text box. *)
   let textbox = Html.createTextarea doc in
@@ -64,6 +65,7 @@ let run _ =
   in
 
   Common.print_string_fun := print;
+  loop "help";
   print "# ";
 
   let b =
@@ -94,10 +96,9 @@ let run _ =
 
   ignore (Js.Unsafe.eval_string "init();");
 
-  loop "help";
   loop "op m : 2 -> 1";
-  loop "ops";
-  loop "plot (m*1);m";
+  loop "rule ass : (m*1);m => (1*m);m";
+  loop "plotnormalize (3*m);(m*2);(m*1);m";
 
   Js._false
 

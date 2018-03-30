@@ -1,18 +1,8 @@
+open Stdlib
 open Common
 open Plot
 
 module Html = Dom_html
-
-(* let color = CSS.Color.string_of_t (CSS.Color.rgb 100 120 150) in *)
-(* ctx##strokeStyle <- (Js.string color); *)
-(* ctx##lineWidth <- 2.; *)
-(* ctx##beginPath (); *)
-(* ctx##moveTo (10.,10.); *)
-(* ctx##lineTo (100.,200.); *)
-(* ctx##stroke (); *)
-
-let red = CSS.Color.string_of_t (CSS.Color.rgb 255 0 0)
-let black = CSS.Color.string_of_t (CSS.Color.rgb 0 0 0)
 
 let plot canvas vg =
   let ctx = canvas##getContext (Html._2d_) in
@@ -30,37 +20,65 @@ let plot canvas vg =
     (function
      | Vertex p ->
         let x,y = px_of_p p in
-        (* Graphics.set_color Graphics.black; *)
-     (* Graphics.fill_circle x y 5 *)
-        ()
+        let r = 5. in
+        ctx##beginPath;
+        ctx##.fillStyle := Js.string "#000000";
+        ctx##arc x y r 0. (2. *. 3.1416) (Js.bool false);
+        ctx##fill;
+        ctx##stroke
      | Edge p ->
         let x,y = px_of_p p in
         (* Graphics.set_color Graphics.red; *)
-     (* Graphics.fill_circle x y 5 *)
-        ()
+        (* Graphics.fill_circle x y 5 *)
+                let x,y = px_of_p p in
+        let r = 5. in
+        ctx##beginPath;
+        (* ctx##.strokeStyle := Js.string "#ff0000"; *)
+        ctx##.fillStyle := Js.string "#ff0000";
+        ctx##arc x y r 0. (2. *. 3.1416) (Js.bool false);
+        ctx##fill;
+        ctx##stroke
      | Wire (p1,p2) ->
-        ctx##.strokeStyle := Js.string black;
+        ctx##.strokeStyle := Js.string "#000000";
         ctx##beginPath;
         let x,y = px_of_p p1 in
         ctx##moveTo x y;
         let x,y = px_of_p p2 in
         ctx##lineTo x y;
         ctx##stroke;
-    ) vg;
-  (* print "plot"; *)
-  Graphics.synchronize ()
+    ) vg
 
-(* let (>>=) = Lwt.bind *)
+let (>>=) = Lwt.bind
 
 let plot_term canvas t =
   let w = P.make t in
-  let plot () =
-    plot canvas (P.plot w)
-  in
+  let plot () = plot canvas (P.plot w) in
   let rec aux () =
-    (* Lwt_js.sleep 0.5 >>= fun () -> *)
-    plot ();
-    P.step w 0.1;
+    Lwt_js.sleep 0.2 >>= fun () ->
+    if P.energy w >= !P.min_energy then
+      (
+        plot ();
+        P.step w 0.1
+      );
     aux ()
   in
-  aux ()
+  ignore (aux ())
+
+let plot_terms canvas t =
+  let w = ref (P.empty ()) in
+  let plot () = plot canvas (P.plot !w) in
+  let rec aux () =
+    Lwt_js.sleep 0.05 >>= fun () ->
+    try
+    if P.energy !w >= !P.min_energy then
+      (
+        plot ();
+        P.step !w 0.1
+      )
+    else
+      w := P.update !w (Enum.get t);
+    aux ()
+    with
+    | Enum.End -> aux ()
+  in
+  ignore (aux ())

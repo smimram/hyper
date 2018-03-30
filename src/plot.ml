@@ -44,6 +44,8 @@ module Physics = struct
   let tspring_angle = ref (3.1416 /. 4.)
   (** Stiffness of a torsion spring. *)
   let tspring_k = ref 0.1
+  (** Minimal energy in order to proceed with simulation. *)
+  let min_energy = ref 0.001
 
   (** An element of a graph. *)
   type element =
@@ -473,7 +475,7 @@ let graphics_terms t =
       Printf.printf "graphics:\n%s\n%!" (Term.to_string t);
       w := P.update !w t;
       (* plot (); Unix.sleep 1; *)
-      while not (Graphics.key_pressed ()) && P.energy !w >= 0.001 do
+      while not (Graphics.key_pressed ()) && P.energy !w >= !P.min_energy do
         plot ();
         P.step !w 0.1;
         Unix.sleepf 0.01

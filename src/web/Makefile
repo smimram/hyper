@@ -1,6 +1,6 @@
 SOURCES = webPlot.ml web.ml
 RESULT = hyper
-PACKS = unix,graphics,js_of_ocaml,js_of_ocaml.ppx
+PACKS = unix,graphics,js_of_ocaml,js_of_ocaml.ppx,js_of_ocaml-lwt
 CMO = $(filter-out ../hyper.cmo, $(wildcard ../*.cmo))
 
 all: hyper
