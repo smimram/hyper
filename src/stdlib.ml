@@ -68,6 +68,9 @@ module Enum = struct
 
   let get e = e ()
 
+  let may_get e =
+    try Some (get e) with End -> None
+
   let append e1 e2 =
     fun () ->
       try

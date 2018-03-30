@@ -545,45 +545,44 @@ module Term = struct
     (* Printf.printf "MATCH\n%s\nWTIH\n%s\n\n%!" (to_string t) (to_string t'); *)
     let g = graph t in
     let g' = graph t' in
-    let ans = ref [] in
-    let return i =
-      (* Check for convexity *)
-      let is_convex i =
-        let t' = Graph.Map.target i in
-        let p = Graph.vorderv t' in
-        List.for_all_pairs (fun x y -> not (Poset.lt p (Graph.Map.appv i y) (Graph.Map.appv i x))) (source t) (target t)
-        (* List.iter_pairs (fun x y -> if Poset.lt p y x then Printf.printf "LOOP: %s < %s\n\n%!" (Vertex.to_string y) (Vertex.to_string x)) (source t) (target t); true *)
-      in
-      if not convex || is_convex i then
-        ans := i :: !ans
-    in
     let queue = Queue.create () in
     Queue.push ([], Graph.Map.empty g g') queue;
-    while not (Queue.is_empty queue) do
-      (* Printf.printf "loop\n"; *)
-      try
-        let l,i = Queue.pop queue in
-        match l with
-        | [] ->
-           if not (Graph.Map.totalv i) then
-             let x = Graph.Map.pickv i in
-             List.iter (fun x' -> Queue.push ([`V(x,x')],i) queue) (Graph.vertices g')
-           else if not (Graph.Map.totale i) then
-             let e = Graph.Map.picke i in
-             List.iter (fun e' -> Queue.push ([`E(e,e')],i) queue) (Graph.edges g')
+    let rec aux () =
+      let return i =
+        (* Check for convexity *)
+        let is_convex i =
+          let t' = Graph.Map.target i in
+          let p = Graph.vorderv t' in
+          List.for_all_pairs (fun x y -> not (Poset.lt p (Graph.Map.appv i y) (Graph.Map.appv i x))) (source t) (target t)
+                             (* List.iter_pairs (fun x y -> if Poset.lt p y x then Printf.printf "LOOP: %s < %s\n\n%!" (Vertex.to_string y) (Vertex.to_string x)) (source t) (target t); true *)
+        in
+        if not convex || is_convex i then i else aux ()
+      in
+      if Queue.is_empty queue then raise Enum.End;
+      let l,i = Queue.pop queue in
+      match l with
+      | [] ->
+         if not (Graph.Map.totalv i) then
+           let x = Graph.Map.pickv i in
+           List.iter (fun x' -> Queue.push ([`V(x,x')],i) queue) (Graph.vertices g');
+           aux ()
+         else if not (Graph.Map.totale i) then
+           let e = Graph.Map.picke i in
+           List.iter (fun e' -> Queue.push ([`E(e,e')],i) queue) (Graph.edges g');
+           aux ()
+         else
+           return i
+      | `V(x,x')::l ->
+         (* Printf.printf "V: %s = %s\n" (Vertex.to_string x) (Vertex.to_string x'); *)
+         assert (Graph.hasv g x);
+         assert (Graph.hasv g' x');
+         if Vertex.label x != Vertex.label x' then raise Exit;
+         if Graph.Map.hasv i x then
+           if Graph.Map.appv i x != x' then
+             aux ()
            else
-             return i
-        | `V(x,x')::l ->
-           (* Printf.printf "V: %s = %s\n" (Vertex.to_string x) (Vertex.to_string x'); *)
-           assert (Graph.hasv g x);
-           assert (Graph.hasv g' x');
-           if Vertex.label x != Vertex.label x' then raise Exit;
-           if Graph.Map.hasv i x then
-             if Graph.Map.appv i x != x' then
-               raise Exit
-             else
-               (Queue.push (l,i) queue; raise Exit);
-           if injective && Graph.Map.cohasv i x' then raise Exit;
+             (Queue.push (l,i) queue; aux ())
+         else if injective && Graph.Map.cohasv i x' then aux () else
            let i = Graph.Map.addv i x x' in
            (* Map every element of the first list to an element of the second one. *)
            let rec mappings l1 l2 =
@@ -606,27 +605,25 @@ module Term = struct
            List.iter_pairs
              (fun p s ->
                Queue.push (p@s@l,i) queue
-             ) p s
-        | `E(e,e')::l ->
-           assert (Graph.hase g e);
-           assert (Graph.hase g' e');
-           if Edge.label e != Edge.label e' then raise Exit;
-           if Graph.Map.hase i e then
-             if Graph.Map.appe i e != e' then
-               raise Exit
-             else
-               (Queue.push (l,i) queue; raise Exit);
-           if Graph.Map.cohase i e' then raise Exit;
+             ) p s;
+           aux ()
+      | `E(e,e')::l ->
+         assert (Graph.hase g e);
+         assert (Graph.hase g' e');
+         if Edge.label e != Edge.label e' then raise Exit;
+         if Graph.Map.hase i e then
+           if Graph.Map.appe i e != e' then
+             aux ()
+           else
+             (Queue.push (l,i) queue; aux ())
+         else if Graph.Map.cohase i e' then aux () else
            let i = Graph.Map.adde i e e' in
            let p = List.map2 (fun x x' -> `V(x,x')) (Edge.source e) (Edge.source e') in
            let s = List.map2 (fun y y' -> `V(y,y')) (Edge.target e) (Edge.target e') in
-           Queue.push (p@s@l,i) queue
-      with
-      | Exit ->
-         (* Printf.printf "fail\n"; *)
-         ()
-    done;
-    !ans
+           Queue.push (p@s@l,i) queue;
+           aux ()
+    in
+    Enum.make aux
 end
 
 (** Rewriting rules. *)
@@ -655,8 +652,9 @@ module Rule = struct
     let l = r.source in
     let r = r.target in
     let m = Term.matchings l t in
-    if m = [] then None else
-      let i = List.hd m in
+    let m = Enum.may_get m in
+    if m = None then None else
+      let i = Option.get m in
       let dl = (Term.source l)@(Term.target l) in
       let g = Term.graph t in
       (* Remove matched part. *)
@@ -688,6 +686,7 @@ module Rule = struct
       let graph = g in
       let source = Term.source t in
       let target = Term.target t in
+      Printf.printf "i:\n%s\n\n%!" (Graph.Map.to_string i);
       let source = List.map (Graph.Map.appv i) source in
       let target = List.map (Graph.Map.appv i) target in
       let t' = { Term.graph; source; target } in
