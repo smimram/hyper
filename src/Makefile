@@ -1,4 +1,4 @@
-SOURCES = stdlib.ml UID.ml graph.ml common.ml plot.ml lang.ml hyper.ml
+SOURCES = extlib.ml UID.ml graph.ml common.ml plot.ml lang.ml hyper.ml
 RESULT = hyper
 PACKS = unix graphics
 ANNOTATE = true

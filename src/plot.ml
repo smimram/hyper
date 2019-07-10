@@ -2,7 +2,7 @@
 
 (* TODO: remove torsion springs which are not used in the end *)
 
-open Stdlib
+open Extlib
 
 open Graph
 

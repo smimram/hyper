@@ -1,6 +1,6 @@
 (** On-the-fly unique identifier generator. *)
 
-open Stdlib
+open Extlib
 module List = Listq
 
 type 'a t =

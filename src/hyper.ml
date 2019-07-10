@@ -1,6 +1,6 @@
 (** Main. *)
 
-open Stdlib
+open Extlib
 open Graph
 
 module V = Vertex

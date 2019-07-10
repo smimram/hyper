@@ -2,7 +2,7 @@
 
 (** Language. *)
 
-open Stdlib
+open Extlib
 open Common
 
 module T = Graph.Term

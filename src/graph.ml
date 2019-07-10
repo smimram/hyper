@@ -1,6 +1,6 @@
 (** Hypergraphs. *)
 
-open Stdlib
+open Extlib
 module List = Listq
 
 (** Labeled vertices. *)
@@ -105,6 +105,7 @@ module Graph = struct
         ) (edges g)
     in
     (* TODO: isolated vertices *)
+    String.concat " " (List.map Vertex.to_string (vertices g)) ^ "\n" ^
     String.concat "\n" edges
 
 
